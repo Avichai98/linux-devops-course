@@ -63,6 +63,10 @@ The root user has full permissions.
 The devteam group has read-only access.  
 Other users have no permissions.
 
-## Screenshots attached
-1. `ls -lR project1.png`  
-2. `groups devuser.png`
+## Screenshots
+
+### Directory Structure and Permissions
+<img src="ls -lR project1.PNG" width="300">
+
+### Groups of devuser
+<img src="groups devuser.PNG" width="300">
