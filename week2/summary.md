@@ -1,4 +1,4 @@
-# Bash Script: Log Keyword Counter & Report Generator
+# Bash Script: Advanced Automated Log Report Generator
 
 This Bash script processes `.log` files in a given directory (recursively), searches for specified keywords (e.g., ERROR, WARNING, CRITICAL), and generates a human-readable report and optionally a CSV file.
 
@@ -12,12 +12,13 @@ This Bash script processes `.log` files in a given directory (recursively), sear
 - Supports custom keywords via arguments
 - Outputs colored report to terminal and saves to `report.txt`
 - Optional CSV export via `--csv` flag
+- Optional `--help` flag that explains usage instructions. 
 - Execution time tracking
 
 ## 🚀 Usage
 
 ```bash
-./log_report.sh <log_directory> [--keywords keyword1 keyword2 ...]
+./log_report.sh <log_directory> [--keywords keyword1 keyword2 ...] [--csv]
 ```
 
 ### Examples:
@@ -28,11 +29,15 @@ This Bash script processes `.log` files in a given directory (recursively), sear
 
 # Custom keywords
 ./log_report.sh logs --keywords ERROR timeout crash
+
+# Custom keywords + CSV export
+./log_report.sh logs --keywords ERROR WARNING --csv
 ```
 
 ## 📂 Output
 
-- `report.txt`: Human-readable summary
+- `report.txt`
+- `report.csv`: CSV version (if `--csv` used)
 
 ## 📁 File Structure Example
 
@@ -48,7 +53,29 @@ project/
 
 ## 🧪 Requirements
 
-- Bash
-- Standard Unix tools: `grep`, `wc`, `bc`, `find`
+- Accept a log directory as an input parameter. 
 
-Created by Avichai Shchori
+- Support a `--keywords` flag allowing multiple keywords (e.g., ERROR, WARN, CRITICAL). 
+
+- For each log file in the directory: 
+- Count occurrences of each keyword. 
+- Format the output as a readable table. 
+
+- Generate a `report.txt` file summarizing results. 
+
+- Support a `--help` flag that explains usage instructions. 
+
+- Calculate and display the total script execution time at the end of the report. 
+
+- Structure the script using functions (e.g., `count_keywords()`, `generate_report()`, `print_help()`). 
+
+- Include input validation and clear error messages. 
+
+- Write clear comments to explain the logic. 
+
+- Ensure the report is clean and professional, optionally export as CSV. 
+
+## 🔗 Project Repository
+
+You can find the full source code and updates here:  
+👉 [GitHub Repository](https://github.com/Avichai98/linux-devops-course/edit/main/week2)
