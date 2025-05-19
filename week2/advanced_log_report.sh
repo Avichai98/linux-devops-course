@@ -5,6 +5,10 @@
 # This script scans .log files in a given directory for specific keywords
 # (e.g., ERROR, WARNING), and generates a summary report in text and optionally CSV format.
 
+# Files
+TIMESTAMP=$(date +"%d-%m-%Y_%H-%M-%S")
+REPORT_TXT="report_$TIMESTAMP.txt"
+REPORT_CSV="report_$TIMESTAMP.csv"
 
 # Color codes for output formatting
 RED="\e[31m"
@@ -82,24 +86,24 @@ function generate_report() {
     shift 2
     local keywords=("${@}") # Get all keywords passed after the log directory
 
-    echo -e "${CYAN}Generating report for logs in directory: $log_dir${RESET}" | tee report.txt
+    echo -e "${CYAN}Generating report for logs in directory: $log_dir${RESET}" | tee "$REPORT_TXT"
     [[ "$csv_flag" == "true" ]] && echo "Log File,Keyword,Occurrences" >report.csv
 
     # Loop through all .log files in the directory and subdirectories using 'find'
     # 'find' ensures recursive search and '-type f' limits results to regular files only
     # 'read -r' prevents backslashes in filenames from being interpreted as escape characters
     find "$log_dir" -type f -name "*.log" | while read -r log_file; do
-        echo -e "${PURPLE}Log File: $log_file${RESET}" | tee -a report.txt
-        echo "| Keyword   | Occurrences |" | tee -a report.txt
-        echo "|-----------|-------------|" | tee -a report.txt
+        echo -e "${PURPLE}Log File: $log_file${RESET}" | tee -a "$REPORT_TXT"
+        echo "| Keyword   | Occurrences |" | tee -a "$REPORT_TXT"
+        echo "|-----------|-------------|" | tee -a "$REPORT_TXT"
 
         # Loop over each keyword
         for keyword in "${keywords[@]}"; do
             count=$(count_keywords "$log_file" "$keyword")
-            printf "| %-9s | %-11s |\n" "$keyword" "$count" | tee -a report.txt
-            [[ "$csv_flag" == "true" ]] && echo "$log_file,$keyword,$count" >>report.csv
+            printf "| %-9s | %-11s |\n" "$keyword" "$count" | tee -a "$REPORT_TXT"
+            [[ "$csv_flag" == "true" ]] && echo "$log_file,$keyword,$count" >> "$REPORT_CSV"
         done
-        echo | tee -a report.txt
+        echo | tee -a "$REPORT_TXT"
     done
 }
 
@@ -135,7 +139,7 @@ function main() {
     execution_time=$(echo "$end_time - $start_time" | bc)
     execution_time=$(printf "%.9f" "$execution_time")
 
-    echo -e "${YELLOW}Total Execution Time: ${execution_time} seconds${RESET}" | tee -a report.txt
+    echo -e "${YELLOW}Total Execution Time: ${execution_time} seconds${RESET}" | tee -a "$REPORT_TXT"
 
     echo -e "${GREEN}The report file is ready!${RESET}"
     [[ "$CSV_OUTPUT" == "true" ]] && echo -e "${GREEN}CSV output written to report.csv${RESET}"
