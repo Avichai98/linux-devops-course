@@ -1,4 +1,6 @@
-# Week 3 – Daily Practice Tasks
+# 📘 Week 3 – DevOps Daily Practice Tasks
+
+ 📁 All scripts and work should be placed in the `week3_practice/` folder as required.
 
 ### **🔹 Task 1: Display Network Info & Open Ports**
 <details>
@@ -336,4 +338,16 @@ echo -e "${GREEN}SSH tunnel closed.${RESET}"
 
 </details>
 
+## 📁 Folder Structure
+
+The following files are included in the `week3_practice/` directory:
+
+```
+week3_practice/
+├── network.sh                # Task 1 - Show network info & ports
+├── generate_ssh_key.sh       # Task 2 - SSH key generation & connection
+├── scp_transfer.sh           # Task 4 - SCP upload/download
+├── run_remote_command.sh     # Task 5 - Run remote commands via SSH
+└── README.md                 # Documentation with explanations and code
+```
 
