@@ -186,12 +186,90 @@ Running `code .` just opens the current directory in VS Code — this command is
 ---
 
 <details>
-<summary>Task 3: Rebase and Cherry-Pick</summary>
+<summary>✅ Task 3: Rebase and Cherry-Pick</summary>
+
+## 🎯 Goal
 
 - Use `git rebase` to reapply commits from `feature-a` onto `main`.
 - Document what happens to the commit history.
 - Use `git cherry-pick` to apply a single commit from `feature-b` to `main`.
-- Explain the difference between `rebase` and `merge` in your own words.
+- Explain the difference between `rebase` and `merge`.
+
+---
+
+## 🔁 Rebase
+
+### ✔️ Commands Executed:
+
+```bash
+git checkout -b main
+touch README.md
+echo "# This is main" > README.md
+git add README.md
+git commit -m "Adding README file"
+git switch feature-a
+git rebase main
+```
+
+## 📝 Log Outputs After Rebase
+
+Below are the three different ways used to inspect the commit history after rebase:
+
+### 1. Using the branch name:
+```bash
+git log feature-a
+```
+🔹 This shows the commit history of `feature-a` even if you're not currently on that branch.  
+🔹 It's useful to inspect another branch's log without switching to it.
+
+### 2. Using `--oneline`:
+```bash
+git log --oneline
+```
+🔹 Shows the commit history in a compact single-line format per commit.
+
+### 3. Current branch log:
+```bash
+git log
+```
+🔹 Shows the full commit history of the current branch.  
+
+### 4. Using `--graph`:
+```bash
+git log --graph
+🔹 Useful for understanding how branches diverged and merged over time.
+
+---
+## 📄 What Happens to the Commit History?
+
+Rebasing `feature-a` onto `main` rewrites the commit history of `feature-a` so that it now appears as if all the commits from `main` came before any commits in `feature-a`. This creates a linear history and avoids a merge commit. It's as if `feature-a` was developed starting from the tip of `main`.
+
+---
+
+## 🍒 Cherry-Pick
+
+### ✔️ Commands Executed:
+
+```bash
+git switch feature-b
+echo "I'm feature-b" > README.txt
+git add README.txt
+git commit -m "Adding README for feature-b"
+git switch main
+git cherry-pick cc5ea79
+```
+
+Where `cc5ea79` is the commit hash of the "Adding README for feature-b" commit in `feature-b`.
+
+---
+
+## 🔀 Merge vs Rebase (In My Words)
+
+The difference between merge and rebase is that when we use rebase, we rewrite the commits of the current branch and put in the beginning the commits of the other branch.  
+For example, we are in the `feature-a` branch, and we use the command:  
+`git rebase main`  
+So now all the `main` commits are presented at the beginning of `feature-a`.  
+A merge keeps the original commits as they are and adds a new commit representing the merge.
 
 </details>
 
