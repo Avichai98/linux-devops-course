@@ -276,23 +276,133 @@ A merge keeps the original commits as they are and adds a new commit representin
 ---
 
 <details>
-<summary>Task 4: GitHub Pull Requests & Code Review</summary>
+<summary>✅ Task 4: GitHub Pull Requests & Code Review</summary>
 
-- Push both branches (`feature-a`, `feature-b`) to your GitHub repository.
-- Create a pull request from one branch into `main`.
-- Request a review from a classmate or mentor.
-- Write at least one constructive code comment in someone else's pull request.
+### 🎯 Goal:
+Push branches to GitHub and open a Pull Request for code review.
+
+---
+
+### 🔁 Steps Performed:
+
+**1. Navigated to the local Git repository:**
+```bash
+cd ~/week4/practice/local_git
+```
+
+**2. Checked current status:**
+```bash
+git status
+# On branch main
+# nothing to commit, working tree clean
+```
+
+**3. Set the remote repository:**
+```bash
+git remote add origin https://github.com/Avichai98/week4-local-git.git
+```
+
+**4. Pushed all branches to GitHub:**
+```bash
+git push --set-upstream origin main
+git push --set-upstream origin feature-a
+git push --set-upstream origin feature-b
+```
+
+---
+
+### 🔃 Pull Request Created:
+
+- A Pull Request was opened from `feature-b` into `main`.
 
 </details>
 
 ---
 
 <details>
-<summary>Task 5: Stash, Amend, and Cleanup</summary>
+<summary>✅ Task 5: Stash, Amend, and Cleanup</summary>
 
-- Make local changes and store them using `git stash`.
-- Restore the changes using `git stash pop`.
-- Amend your last commit using `git commit --amend`.
-- Clean up local branches that have already been merged.
+### 🎯 Goal
+Practice using Git stash, amend, and branch cleanup tools.
+
+---
+
+## 🧪 Step 1: Make a Local Change and Stash It
+
+```bash
+echo "temporary change" >> example.txt
+git stash
+```
+
+This saves the change to a temporary stash and reverts the file to the last committed state.
+
+You can verify this with:
+```bash
+git status
+cat example.txt
+```
+
+---
+
+## ♻️ Step 2: Restore the Stashed Change
+
+```bash
+git stash pop
+```
+
+This restores the changes saved in the stash. You should now see `temporary change` again in `example.txt`.
+
+---
+
+## ✏️ Step 3: Amend the Last Commit
+
+First, stage the change:
+
+```bash
+git add example.txt
+```
+
+Then amend the previous commit:
+
+```bash
+git commit --amend
+```
+
+This opens your editor, or directly creates a new commit that replaces the previous one with the updated contents.
+
+---
+
+## 🔃 Step 4: Handle Divergence
+
+You may see:
+```
+Your branch and 'origin/main' have diverged
+```
+
+To rebase your commits cleanly over the remote changes:
+
+```bash
+git pull --rebase
+```
+
+Now your branch is up to date with the remote, with a linear commit history.
+
+---
+
+## 🧹 Step 5: Cleanup Merged Branches
+
+Check which branches are fully merged into `main`:
+
+```bash
+git branch --merged
+```
+
+Delete a merged branch:
+
+```bash
+git branch -d feature-a
+```
+
+Repeat for any other merged branches.
 
 </details>
