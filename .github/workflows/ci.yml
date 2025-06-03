@@ -49,4 +49,8 @@ jobs:
       with:
         name: my-artifact
         path: week5/week5_practice/ci-practice/artifact/world.txt
+        
+    - name: Check service availability
+      run: |
+        curl --fail --silent https://jsonplaceholder.typicode.com/posts || echo "Service not available"
 
