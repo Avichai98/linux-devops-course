@@ -22,6 +22,7 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+        cache-dependency-path: week5/week5_practice/ci-practice/package-lock.json
 
     - run: npm ci
       working-directory: week5/week5_practice/ci-practice
