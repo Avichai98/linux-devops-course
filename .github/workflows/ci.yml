@@ -32,3 +32,21 @@ jobs:
 
     - run: npm test
       working-directory: week5/week5_practice/ci-practice
+      
+  artifacts:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - run: mkdir -p artifact
+      working-directory: week5/week5_practice/ci-practice
+      
+    - run: echo hello > artifact/world.txt
+      working-directory: week5/week5_practice/ci-practice
+      
+    - uses: actions/upload-artifact@v4
+      with:
+        name: my-artifact
+        path: week5/week5_practice/ci-practice/artifact/world.txt
+
