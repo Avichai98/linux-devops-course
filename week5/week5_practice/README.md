@@ -98,19 +98,122 @@ jobs:
 </details>
 
 <details>
-<summary><strong>Task 3 – Matrix Strategy</strong></summary>
+<summary><strong>Task 3 – Matrix Strategy ✅</strong></summary>
 
-- Modify CI workflow to use matrix strategy (e.g., Node.js 14, 16, 18)
-- Confirm it runs per version
+### 🎯 Goal
+Modify the CI workflow to run tests using a matrix strategy.  
+This allows testing across multiple versions of a language runtime (e.g., Node.js 18.x, 20.x, 22.x) to ensure compatibility.
+
+---
+
+### 📋 Checklist
+
+- [x] Define a matrix for versions  
+- [x] Confirm that the workflow runs once per version
+
+---
+
+### 🛠️ Files Modified
+
+> `.github/workflows/ci.yml`
+
+```yaml
+name: Node.js CI
+
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "*" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: week5/week5_practice/ci-practice/package-lock.json
+
+      - run: npm ci
+        working-directory: week5/week5_practice/ci-practice
+
+      - run: npm run build --if-present
+        working-directory: week5/week5_practice/ci-practice
+
+      - run: npm test
+        working-directory: week5/week5_practice/ci-practice
+```
+
+### 📘 Explanation
+
+**Matrix Strategy**  
+The matrix section defines multiple Node.js versions to test against. This will cause the job to run separately for each version defined.
 
 </details>
 
 <details>
-<summary><strong>Task 4 – Artifacts and Post-job Monitoring</strong></summary>
+<summary><strong>Task 4 – Artifacts and Post-job Monitoring ✅</strong></summary>
 
-- Upload test artifacts using `actions/upload-artifact`
-- Use `curl` or similar to validate endpoint in post-job step
+### 🧩 What was added
 
+In this task, we extended our CI workflow with two main additions:
+
+1. **Upload an artifact after the job runs**
+2. **Verify service availability using `curl` as a post-job step**
+
+---
+
+### 📦 Artifact Upload
+
+```yaml
+- run: mkdir -p artifact
+  working-directory: week5/week5_practice/ci-practice
+
+- run: echo hello > artifact/world.txt
+  working-directory: week5/week5_practice/ci-practice
+
+- uses: actions/upload-artifact@v4
+  with:
+    name: my-artifact
+    path: week5/week5_practice/ci-practice/artifact/world.txt
+```
+
+### 📘 Explanation: Artifact Creation and Upload
+
+- `mkdir -p artifact`: Creates a directory named `artifact` in the project subfolder.
+
+- `echo hello > artifact/world.txt`: Adds a test file with content `"hello"` to simulate a build artifact.
+
+- `actions/upload-artifact`: Uploads the file to GitHub Actions. It becomes available under the **Artifacts** tab for download.
+
+---
+
+### 🌐 Post-Job: Validate Service Availability
+
+```yaml
+- name: Check service availability
+  run: |
+    curl --fail --silent https://jsonplaceholder.typicode.com/posts || echo "Service not available"
+```
+
+### 📘 Explanation: Validate Service Availability
+
+This step verifies that an external service or deployment endpoint is reachable.
+
+- `curl --fail --silent`: Attempts a silent request and fails the step if the service is unreachable.
+  
+- The `|| echo "Service not available"` part ensures that a meaningful message is shown in case the `curl` command fails.
+ 
 </details>
 
 <details>
