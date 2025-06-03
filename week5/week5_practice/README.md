@@ -18,12 +18,82 @@ For example, if someone opens a new issue or makes a push – the workflow begin
 </details>
 
 <details>
-<summary><strong>Task 2 – Basic CI Pipeline for Testing</strong></summary>
+<summary><strong>Task 2 – Basic CI Pipeline for Testing ✅</strong></summary>
 
-- Create `.github/workflows/ci.yml`
-- Run on push and pull_request
-- Install dependencies
-- Run test script (e.g., `npm test`, `pytest`)
+A GitHub Actions workflow was created at `.github/workflows/ci.yml` to implement Continuous Integration (CI) for this project.
+
+### 🎯 Requirements
+
+The pipeline meets the following requirements:
+- ✅ Runs on every `push` and `pull_request` to any branch.
+- ✅ Installs dependencies via `npm ci`.
+- ✅ Runs the test script (`npm test`).
+
+### 🛠️ Technology Used
+
+This CI workflow is based on **Node.js**, and runs against Node versions **18.x**, **20.x**, and **22.x** in parallel using a matrix strategy. This helps ensure compatibility with different versions of Node.
+
+---
+
+## 📁 File: `.github/workflows/ci.yml`
+
+```yaml
+name: Node.js CI
+
+on:
+  push:
+    branches: [ "*" ]        # Triggers on push to any branch
+  pull_request:
+    branches: [ "*" ]        # Triggers on pull request to any branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest   # Runner environment: latest Ubuntu
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]  # Test against multiple Node.js versions
+
+    steps:
+    - uses: actions/checkout@v4          # Checkout the repository code
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}          # Set the node version dynamically
+        cache: 'npm'                                      # Cache node_modules for faster builds
+        cache-dependency-path: week5/week5_practice/ci-practice/package-lock.json
+
+    - run: npm ci
+      working-directory: week5/week5_practice/ci-practice  # Clean install dependencies
+
+    - run: npm run build --if-present
+      working-directory: week5/week5_practice/ci-practice  # Optional build step
+
+    - run: npm test
+      working-directory: week5/week5_practice/ci-practice  # Run tests
+```
+
+### 🔁 Workflow Explanation
+
+| Step                         | Purpose                                                                 |
+|-----------------------------|-------------------------------------------------------------------------|
+| `on: push/pull_request`     | Triggers the workflow on any branch push or pull request                |
+| `matrix.node-version`       | Runs the same job using Node.js 18, 20, and 22                          |
+| `npm ci`                    | Installs dependencies quickly and predictably using `package-lock.json` |
+| `npm run build --if-present`| Executes build script if defined in `package.json`                      |
+| `npm test`                  | Executes unit tests for the project                                     |
+
+---
+
+## 📌 Notes
+
+- `working-directory` ensures all npm commands run inside the actual project path (`week5/week5_practice/ci-practice`).
+- Using a matrix strategy helps detect compatibility issues with multiple Node.js versions.
+- `actions/setup-node@v4` handles Node installation and caching.
+- `npm ci` is preferred in CI/CD environments for clean and reproducible installs.
+
+---
 
 </details>
 
