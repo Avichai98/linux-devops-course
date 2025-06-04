@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CTF Challenge</title>
+</head>
+<body>
+<h2>Submit your Message</h2>
+<form method="post">
+    <label>
+        <input type="text" name="message" />
+    </label>
+    <button type="submit">Submit</button>
+</form>
+
+<div>
+    <h3>Messages:</h3>
+    <ul>
+        <th:block th:each="msg : ${messages}">
+            <li th:utext="${msg}"></li> <!-- Unsafe on purpose (XSS) -->
+        </th:block>
+    </ul>
+</div>
+
+<script>
+    // This function will only print the flag if called
+    async function revealFlag() {
+        const response = await fetch('/secret-flag', {
+            method: 'GET',
+            credentials: 'same-origin'
+        });
+
+        if (response.ok) {
+            const flag = await response.text();
+            alert("🏁 Flag: " + flag);
+        } else {
+            alert("Access denied");
+        }
+    }
+</script>
+</body>
+</html>

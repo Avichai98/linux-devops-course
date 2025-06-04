@@ -12,98 +12,98 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.x, 22.x]
+        node-version: [ 18.x, 20.x, 22.x ]
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        cache-dependency-path: week5/week5_practice/ci-practice/package-lock.json
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: week5/week5_practice/ci-practice/frontend/package-lock.json
 
-    - run: npm ci
-      working-directory: week5/week5_practice/ci-practice
+      - run: npm ci
+        working-directory: week5/week5_practice/ci-practice/frontend
 
-    - run: npm run build --if-present
-      working-directory: week5/week5_practice/ci-practice
+      - run: npm run build --if-present
+        working-directory: week5/week5_practice/ci-practice/frontend
 
-    - run: npm test
-      working-directory: week5/week5_practice/ci-practice
+      - run: npm test
+        working-directory: week5/week5_practice/ci-practice/frontend
 
-    - name: Notify Discord
-      if: always()
-      run: |
-        STATUS="Failed"
-        if [ "${{ job.status }}" == "success" ]; then
-          STATUS="Succeeded"
-        fi
+      - name: Notify Discord
+        if: always()
+        run: |
+          STATUS="Failed"
+          if [ "${{ job.status }}" == "success" ]; then
+            STATUS="Succeeded"
+          fi
+          
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"GitHub Actions job **${{ github.job }}** in version **${{ matrix.node-version }}**  finished with status: $STATUS in repo: ${{ github.repository }}\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
 
-        curl -H "Content-Type: application/json" \
-             -X POST \
-             -d "{\"content\": \"GitHub Actions job **${{ github.job }}** in version **${{ matrix.node-version }}**  finished with status: $STATUS in repo: ${{ github.repository }}\"}" \
-             ${{ secrets.DISCORD_WEBHOOK_URL }}
+      - name: Notify Slack
+        if: always()
+        run: |
+          STATUS="Failed"
+          if [ "${{ job.status }}" == "success" ]; then
+            STATUS="Succeeded"
+          fi
+          
+          curl -H 'Content-type: application/json' \
+               -X POST \
+               --data "{\"text\":\"GitHub Actions job **${{ github.job }}** in version **${{ matrix.node-version }}** $STATUS in repo: ${{ github.repository }}\"}" \
+               ${{ secrets.SLACK_WEBHOOK_URL }}
+  
 
-    - name: Notify Slack
-      if: always()
-      run: |
-        STATUS="Failed"
-        if [ "${{ job.status }}" == "success" ]; then
-          STATUS="Succeeded"
-        fi
-
-        curl -H 'Content-type: application/json' \
-             -X POST \
-             --data "{\"text\":\"GitHub Actions job **${{ github.job }}** in version **${{ matrix.node-version }}** $STATUS in repo: ${{ github.repository }}\"}" \
-             ${{ secrets.SLACK_WEBHOOK_URL }}
-
-      
   artifacts:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - run: mkdir -p artifact
-      working-directory: week5/week5_practice/ci-practice
-      
-    - run: echo hello > artifact/world.txt
-      working-directory: week5/week5_practice/ci-practice
-      
-    - uses: actions/upload-artifact@v4
-      with:
-        name: my-artifact
-        path: week5/week5_practice/ci-practice/artifact/world.txt
-        
-    - name: Check service availability
-      run: |
-        curl --fail --silent https://jsonplaceholder.typicode.com/posts || echo "Service not available"
+      - uses: actions/checkout@v4
 
-    - name: Notify Discord
-      if: always()
-      run: |
-        STATUS="Failed"
-        if [ "${{ job.status }}" == "success" ]; then
-          STATUS="Succeeded"
-        fi
+      - run: mkdir -p artifact
+        working-directory: week5/week5_practice/ci-practice/frontend
 
-        curl -H "Content-Type: application/json" \
-             -X POST \
-             -d "{\"content\": \"GitHub Actions job **${{ github.job }}** finished with status: $STATUS in repo: ${{ github.repository }}\"}" \
-             ${{ secrets.DISCORD_WEBHOOK_URL }}
+      - run: echo hello > artifact/world.txt
+        working-directory: week5/week5_practice/ci-practice/frontend
 
-    - name: Notify Slack
-      if: always()
-      run: |
-        STATUS="Failed"
-        if [ "${{ job.status }}" == "success" ]; then
-          STATUS="Succeeded"
-        fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: my-artifact
+          path: week5/week5_practice/ci-practice/frontend/artifact/world.txt
 
-        curl -H 'Content-type: application/json' \
-             -X POST \
-             --data "{\"text\":\"GitHub Actions job **${{ github.job }}** $STATUS in repo: ${{ github.repository }}\"}" \
-             ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Check service availability
+        run: |
+          curl --fail --silent https://jsonplaceholder.typicode.com/posts || echo "Service not available"
+
+      - name: Notify Discord
+        if: always()
+        run: |
+          STATUS="Failed"
+          if [ "${{ job.status }}" == "success" ]; then
+            STATUS="Succeeded"
+          fi
+          
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"GitHub Actions job **${{ github.job }}** finished with status: $STATUS in repo: ${{ github.repository }}\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Notify Slack
+        if: always()
+        run: |
+          STATUS="Failed"
+          if [ "${{ job.status }}" == "success" ]; then
+            STATUS="Succeeded"
+          fi
+          
+          curl -H 'Content-type: application/json' \
+               -X POST \
+               --data "{\"text\":\"GitHub Actions job **${{ github.job }}** $STATUS in repo: ${{ github.repository }}\"}" \
+               ${{ secrets.SLACK_WEBHOOK_URL }}
  
