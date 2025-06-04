@@ -17,24 +17,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: week5/week5_practice/ci-practice/frontend/package-lock.json
 
-      - name: Install frontend dependencies
-        run: npm ci
+      - run: npm ci
         working-directory: week5/week5_practice/ci-practice/frontend
 
-      - name: Build frontend
-        run: npm run build --if-present
+      - run: npm run build --if-present
         working-directory: week5/week5_practice/ci-practice/frontend
 
-      - name: Run frontend tests
-        run: npm test
+      - run: npm test
         working-directory: week5/week5_practice/ci-practice/frontend
+
+      - name: Notify Discord
+        if: always()
+        run: |
+          STATUS="Failed"
+          if [ "${{ job.status }}" == "success" ]; then
+            STATUS="Succeeded"
+          fi
+          
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"GitHub Actions job **${{ github.job }}** in version **${{ matrix.node-version }}**  finished with status: $STATUS in repo: ${{ github.repository }}\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
+
 
   backend:
     runs-on: ubuntu-latest
