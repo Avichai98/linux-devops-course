@@ -210,17 +210,107 @@ In this task, we extended our CI workflow with two main additions:
 
 This step verifies that an external service or deployment endpoint is reachable.
 
-- `curl --fail --silent`: Attempts a silent request and fails the step if the service is unreachable.
+- `curl --fail --silent`: Sends the request silently (without outputting response data), and causes the step to fail if the HTTP request fails (e.g., returns a 4xx or 5xx status).
   
 - The `|| echo "Service not available"` part ensures that a meaningful message is shown in case the `curl` command fails.
  
 </details>
 
 <details>
-<summary><strong>Task 5 – Slack/Discord Integration</strong></summary>
+<summary><strong>Task 5 – Slack/Discord Integration ✅</strong></summary>
 
-- Send a message via webhook or action on job success/failure
-- (Bonus) Add job name, duration, or summary
+In this task, we extended our GitHub Actions workflow to send notifications to **Slack** and **Discord** upon job success or failure using webhooks.
+
+### ✅ What Was Added
+
+We added two new steps to each job (`build` and `artifacts`) that:
+
+- Determine the job result (success/failure).
+- Send a notification to Slack and Discord using a webhook.
+- Include helpful information such as job name, Node.js version (in the `build` job), and repository name.
+
+### What is a Webhook?
+
+A **webhook** is a way for an application to send real-time data to another service when certain events occur.  
+In the context of GitHub Actions, a webhook URL (like a Discord or Slack webhook) acts as an endpoint that receives a message from the workflow when a job completes.  
+This allows notifications or updates to be automatically sent to platforms like Slack or Discord without requiring manual polling or API requests.
+
+### 🔧 Webhook Setup
+
+1. **Slack:**
+   - Create a [Slack Incoming Webhook](https://api.slack.com/messaging/webhooks).
+   - Save the URL as a secret in your GitHub repository:
+     - Name: `SLACK_WEBHOOK_URL`
+
+2. **Discord:**
+   - Go to your Discord server → Settings → Integrations → Webhooks.
+   - Create a new webhook and copy the URL.
+   - Save it as a secret:
+     - Name: `DISCORD_WEBHOOK_URL`
+
+> Note: Secrets are added in your GitHub repo under **Settings → Secrets → Actions**.
+
+---
+
+### 📄 Sample Notification Step
+
+```yaml
+- name: Notify Discord
+  if: always()
+  run: |
+    STATUS="Failed"
+    if [ "${{ job.status }}" == "success" ]; then
+      STATUS="Succeeded"
+    fi
+
+    curl -H "Content-Type: application/json" \
+         -X POST \
+         -d "{\"content\": \"GitHub Actions job **${{ github.job }}** finished with status: $STATUS in repo: ${{ github.repository }}\"}" \
+         ${{ secrets.DISCORD_WEBHOOK_URL }}
+```
+
+```yaml
+- name: Notify Slack
+  if: always()
+  run: |
+    STATUS="Failed"
+    if [ "${{ job.status }}" == "success" ]; then
+      STATUS="Succeeded"
+    fi
+
+    curl -H 'Content-type: application/json' \
+         -X POST \
+         --data "{\"text\":\"GitHub Actions job **${{ github.job }}** $STATUS in repo: ${{ github.repository }}\"}" \
+         ${{ secrets.SLACK_WEBHOOK_URL }}
+```
+
+---
+
+### 🧠 Explanation
+
+- `if: always()` – ensures the step runs whether the job passes or fails.
+- `STATUS="Failed"` – default value for failed jobs.
+- `if [ "${{ job.status }}" == "success" ]` – changes status to Succeeded if job passed.
+- `curl` – command-line tool to send HTTP requests.
+- `-H` – sets request header (e.g., content type as JSON).
+- `-X` – specifies the HTTP method (e.g., `POST`, `GET`, etc.). Here, we use `POST` to send data.
+- `-d` or `--data` – specifies the body of the HTTP request (in JSON format).
+
+---
+
+### 🏁 Outcome
+
+At the end of each job, you now receive:
+- A **Discord message** in your chosen channel.
+- A **Slack message** to your workspace.
+
+Both contain:
+- The name of the job (e.g., `build`, `artifacts`)
+- The final status (✅ Succeeded / ❌ Failed)
+- The name of the GitHub repository
+- (In `build`) The Node.js version used.
+
+---
 
 </details>
 
