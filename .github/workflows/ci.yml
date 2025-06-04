@@ -43,7 +43,7 @@ jobs:
 
         curl -H "Content-Type: application/json" \
              -X POST \
-             -d "{\"content\": \"GitHub Actions job **${{ github.job }}** finished with status: $STATUS in repo: ${{ github.repository }}\"}" \
+             -d "{\"content\": \"GitHub Actions job **${{ github.job }}** in version **${{ matrix.node-version }}**  finished with status: $STATUS in repo: ${{ github.repository }}\"}" \
              ${{ secrets.DISCORD_WEBHOOK_URL }}
       
   artifacts:
