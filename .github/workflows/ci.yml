@@ -45,6 +45,20 @@ jobs:
              -X POST \
              -d "{\"content\": \"GitHub Actions job **${{ github.job }}** in version **${{ matrix.node-version }}**  finished with status: $STATUS in repo: ${{ github.repository }}\"}" \
              ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+    - name: Notify Slack
+      if: always()
+      run: |
+        STATUS="Failed"
+        if [ "${{ job.status }}" == "success" ]; then
+          STATUS="Succeeded"
+        fi
+
+        curl -H 'Content-type: application/json' \
+             -X POST \
+             --data "{\"text\":\"GitHub Actions job **${{ github.job }}** in version **${{ matrix.node-version }}** $STATUS in repo: ${{ github.repository }}\"}" \
+             ${{ secrets.SLACK_WEBHOOK_URL }}
+
       
   artifacts:
     runs-on: ubuntu-latest
@@ -80,3 +94,16 @@ jobs:
              -d "{\"content\": \"GitHub Actions job **${{ github.job }}** finished with status: $STATUS in repo: ${{ github.repository }}\"}" \
              ${{ secrets.DISCORD_WEBHOOK_URL }}
 
+    - name: Notify Slack
+      if: always()
+      run: |
+        STATUS="Failed"
+        if [ "${{ job.status }}" == "success" ]; then
+          STATUS="Succeeded"
+        fi
+
+        curl -H 'Content-type: application/json' \
+             -X POST \
+             --data "{\"text\":\"GitHub Actions job **${{ github.job }}** $STATUS in repo: ${{ github.repository }}\"}" \
+             ${{ secrets.SLACK_WEBHOOK_URL }}
+ 
