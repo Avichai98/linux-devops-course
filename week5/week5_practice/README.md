@@ -315,10 +315,136 @@ Both contain:
 </details>
 
 <details>
-<summary><strong>Task 6 – Combined Frontend and Backend CI/CD</strong></summary>
+<summary><strong>Task 6 – Combined Frontend and Backend CI/CD ✅</strong></summary>
 
-- Handle CI/CD for both frontend and backend
-- Optionally upload build artifacts
-- Echo a message confirming both parts succeeded
+In this task, we created a GitHub Actions workflow that performs CI/CD operations for both the frontend and backend parts of the project.
+
+## ✔ Checklist Implemented
+
+- ✅ Runs tests for both **frontend** and **backend**
+- ✅ Uploads build artifacts for both (optional, can be extended)
+- ✅ Prints a final success message if both flows finish successfully
+
+## 📁 Project Structure
+
+```plaintext
+week5/week5_practice/ci-practice/
+├── frontend/
+│   └── package.json
+├── backend/
+│   ├── build.gradle.kts
+│   ├── gradlew
+│   └── src/
+```
+
+## 🛠 Workflow Overview
+
+The workflow is split into **three jobs**:
+
+### 🔹 `frontend` job
+
+- Uses `actions/setup-node` to install Node.js versions (18.x and 20.x).
+- Runs:
+  - `npm ci`
+  - `npm run build --if-present`
+  - `npm test`
+- Sends a notification to Discord with job status.
+
+### 🔹 `backend` job
+
+- Uses `actions/setup-java` to install JDK 17.
+- Builds the Kotlin Spring Boot backend using Gradle:
+  - `./gradlew build`
+  - `./gradlew test`
+
+> 🛠 Note: We added execution permissions using `chmod +x ./gradlew` to avoid the “Permission denied” error on Linux runners.
+
+### 🔹 `success-message` job
+
+- Runs only **after** both `frontend` and `backend` succeed.
+- Prints:  
+  `"Both frontend and backend CI/CD flows completed successfully!"`
+
+## 🔧 Sample CI/CD Workflow
+
+```yaml
+name: Combined Frontend and Backend CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [ 18.x, 20.x ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: week5/week5_practice/ci-practice/frontend/package-lock.json
+
+      - run: npm ci
+        working-directory: week5/week5_practice/ci-practice/frontend
+
+      - run: npm run build --if-present
+        working-directory: week5/week5_practice/ci-practice/frontend
+
+      - run: npm test
+        working-directory: week5/week5_practice/ci-practice/frontend
+
+      - name: Notify Discord
+        if: always()
+        run: |
+          STATUS="Failed"
+          if [ "${{ job.status }}" == "success" ]; then
+            STATUS="Succeeded"
+          fi
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"Frontend job finished with status: $STATUS\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+  backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Grant Gradle wrapper permission
+        run: chmod +x ./gradlew
+        working-directory: week5/week5_practice/ci-practice/backend
+
+      - name: Build backend with Gradle
+        run: ./gradlew build
+        working-directory: week5/week5_practice/ci-practice/backend
+
+      - name: Run backend tests
+        run: ./gradlew test
+        working-directory: week5/week5_practice/ci-practice/backend
+
+  success-message:
+    runs-on: ubuntu-latest
+    needs: [ frontend, backend ]
+
+    steps:
+      - name: Echo success message
+        run: echo "Both frontend and backend CI/CD flows completed successfully!"
+```
 
 </details>
