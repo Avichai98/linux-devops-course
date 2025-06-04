@@ -32,6 +32,19 @@ jobs:
 
     - run: npm test
       working-directory: week5/week5_practice/ci-practice
+
+    - name: Notify Discord
+      if: always()
+      run: |
+        STATUS="Failed"
+        if [ "${{ job.status }}" == "success" ]; then
+          STATUS="Succeeded"
+        fi
+
+        curl -H "Content-Type: application/json" \
+             -X POST \
+             -d "{\"content\": \"GitHub Actions job **${{ github.job }}** finished with status: $STATUS in repo: ${{ github.repository }}\"}" \
+             ${{ secrets.DISCORD_WEBHOOK_URL }}
       
   artifacts:
     runs-on: ubuntu-latest
@@ -53,4 +66,17 @@ jobs:
     - name: Check service availability
       run: |
         curl --fail --silent https://jsonplaceholder.typicode.com/posts || echo "Service not available"
+
+    - name: Notify Discord
+      if: always()
+      run: |
+        STATUS="Failed"
+        if [ "${{ job.status }}" == "success" ]; then
+          STATUS="Succeeded"
+        fi
+
+        curl -H "Content-Type: application/json" \
+             -X POST \
+             -d "{\"content\": \"GitHub Actions job **${{ github.job }}** finished with status: $STATUS in repo: ${{ github.repository }}\"}" \
+             ${{ secrets.DISCORD_WEBHOOK_URL }}
 
