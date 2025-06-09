@@ -441,7 +441,117 @@ docker network rm mynet
 <details>
 <summary><strong>Task 5 – Docker Compose Intro</strong></summary>
 
-Write a `docker-compose.yml` file for a two-service app (web + db). Define environment variables, volumes, and network within the compose file. Bring everything up using `docker-compose up` and test inter-service communication.
+✅ **Goal**: Create a multi-service Docker environment with NGINX and MySQL using Docker Compose, with custom network and persistent volumes.
+
+## 🐳 Services
+
+### 1. web (NGINX)  
+- **Image:** nginx:alpine  
+- **Container name:** my_nginx  
+- **Ports:** Maps host port `8080` to container port `80`  
+- **Network:** Connected to custom bridge network `mynet`  
+
+### 2. db (MySQL)  
+- **Image:** mysql:8  
+- **Container name:** my_mysql  
+- **Environment Variables:**  
+  - `MYSQL_USER=user`  
+  - `MYSQL_PASSWORD=password`  
+  - `MYSQL_DATABASE=mydb`  
+- **Ports:** Exposes port `3306` (default MySQL port)  
+- **Volumes:** Persists database data in a named volume `db_data`  
+- **Network:** Connected to the same network `mynet`  
+
+---
+
+## 🔧 Volumes  
+- `db_data`: Used to persist MySQL database data outside the container.  
+
+---
+
+## 🌐 Network  
+- `mynet`: Custom user-defined bridge network for inter-container communication.  
+
+---
+
+## 🚀 Usage  
+
+### Start the environment:  
+```bash
+docker-compose up -d
+```
+
+### Stop and remove containers, networks, and volumes:  
+```bash
+docker-compose down
+```
+
+### View logs live:  
+```bash
+docker-compose logs -f
+```
+
+---
+
+## 📁 docker-compose.yml  
+```yaml
+version: '3.9'
+
+services:
+  web:
+    image: nginx:alpine
+    container_name: my_nginx
+    ports:
+      - "8080:80"
+    networks:
+      - mynet
+
+  db:
+    image: mysql:8
+    container_name: my_mysql
+    environment:
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: mydb
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - mynet
+
+volumes:
+  db_data:
+
+networks:
+  mynet:
+    driver: bridge
+```
+
+---
+
+## 🔍 Verify connectivity  
+
+To verify that the web container can communicate with the db container by container name, run:  
+
+```bash
+docker exec -it my_nginx sh
+ping my_mysql
+```
+
+Successful ping responses confirm network communication.
+
+---
+
+## 🧼 Cleanup  
+
+To clean up everything:  
+
+```bash
+docker-compose down
+docker volume rm db_data
+docker network rm mynet
+```
 
 </details>
 
