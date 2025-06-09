@@ -1,0 +1,31 @@
+version: '3.9'
+
+services:
+  web:
+    image: nginx:alpine
+    container_name: my_nginx
+    ports:
+      - "8080:80"
+    networks:
+      - mynet
+
+  db:
+    image: mysql:8
+    container_name: my_mysql
+    environment:
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: mydb
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - mynet
+  
+volumes:
+  db_data:
+
+networks:
+  mynet:
+    driver: bridge
