@@ -140,18 +140,303 @@ docker rmi nginx:alpine
 </details>
 
 <details>
-<summary><strong>Task 3 – Dockerfile Basics</strong></summary>
+<summary><strong>Task 3 – Dockerfile Basics ✅</strong></summary>
 
-Create your own Dockerfile for a basic Node.js or Python Flask app that prints `Hello from Docker`. Build the image and run the container. Add a `.dockerignore` file and examine the impact.
+✅ **Goal**: Learn how to create a Dockerfile, build a custom image, run a Flask app inside a container, and use `.dockerignore` to optimize the image.
+
+---
+
+### 📦 Step 1: Create a simple Flask app
+
+Create a new folder and add a Python script named `app.py`:
+
+```bash
+mkdir flask-app
+cd flask-app
+```
+
+Create the file:
+
+**app.py**:
+```bash
+from flask import Flask
+app = Flask(__name__)
+
+@app.route("/")
+def hello():
+    return "Hello from Docker!"
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+```
+
+---
+
+### 📝 Step 2: Create requirements.txt
+
+```bash
+flask
+```
+
+---
+
+### 🛠️ Step 3: Create Dockerfile
+
+**Dockerfile**:
+```bash
+# 1. Use a small and official Python base image
+FROM python:3.10-slim
+```
+🔹 `FROM python:3.10-slim` – Every Docker image starts from a base image – this provides the foundational environment needed to run your app.
+In our case, python:3.10-slim includes a minimal Python installation, so we don't need to manually install Python or OS libraries.
+Without a base image, you would have to build everything from scratch – including the operating system!
+
+```bash
+# 2. Set the working directory inside the container
+WORKDIR /app
+```
+🔹 `WORKDIR /app` – Sets the current directory inside the container to `/app`. All future commands like `COPY` or `RUN` will operate relative to this directory.
+
+```bash
+# 3. Copy requirements and install packages
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+```
+🔹 `COPY requirements.txt .` – Copies the file from your local folder into the container's `/app` directory.  
+🔹 `RUN pip install --no-cache-dir -r requirements.txt` – Installs the Python packages listed, and `--no-cache-dir` reduces final image size.
+
+```bash
+# 4. Copy the rest of the source code
+COPY . .
+```
+🔹 `COPY . .` – Copies all files from your local directory into the container, **except those excluded by `.dockerignore`**.
+
+```bash
+# 5. Expose the port the app will run on
+EXPOSE 5000
+```
+🔹 `EXPOSE 5000` 
+
+ Documents that the container uses port 5000 (used by Flask). This is **for documentation only** – to actually publish the port, use `-p` in `docker run`.
+
+```bash
+# 6. Define the default command to run the app
+CMD ["python", "app.py"]
+```
+🔹 `CMD` 
+
+RUN is used when building the image – it runs a command at build-time (like installing packages).
+
+CMD is used when running the container – it tells Docker what command to execute when the container starts.
+
+In our case:
+
+RUN pip install ... installs Flask during the build
+
+CMD ["python", "app.py"] runs the server when the container starts
+
+🔥 If you used RUN python app.py, it would run during the build, and not actually run when you docker run the container.
+
+---
+
+### ⚙️ Step 4: Add .dockerignore
+
+**.dockerignore**:
+```bash
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.dockerignore
+Dockerfile
+```
+
+📌 **Explanation**:  
+This file tells Docker to **exclude** certain files/folders from being copied into the Docker image when running `docker build`.
+
+- Prevents adding Python cache files (`__pycache__`, `.pyc`, etc.)
+- Prevents leaking `.env` files (which often contain secrets)
+- Prevents including the `Dockerfile` and `.dockerignore` themselves
+
+---
+
+### 🏗️ Step 5: Build the Docker image
+
+```bash
+docker build -t flask-hello .
+```
+
+---
+
+### 🚀 Step 6: Run the container
+
+```bash
+docker run -p 5000:5000 --name my_flask_app flask-hello
+```
+
+Now open your browser at:  
+[http://localhost:5000](http://localhost:5000)
+
+You should see:  
+**Hello from Docker!**
+
+📸 **Screenshot**:  
+![alt text](image-1.png)
+
+---
+
+### 🔍 Step 7: Comparing with and without `.dockerignore`
+
+To **see the effect of `.dockerignore`**, we’ll:
+
+1. Build the image normally (with `.dockerignore`)
+2. Then temporarily remove the file and rebuild
+3. Compare the output – look for the **Build Context size**
+
+#### 1. Build with `.dockerignore`
+
+```bash
+docker build -t flask-with-ignore .
+```
+
+You will see something like:
+
+```bash
+Sending build context to Docker daemon 10.24kB
+```
+
+
+#### 2. Build without `.dockerignore`
+
+Rename the file so it doesn't apply:
+
+```bash
+mv .dockerignore _dockerignore.bak
+docker build -t flask-no-ignore .
+```
+
+Now the output might say:
+
+```bash
+Sending build context to Docker daemon 1.5MB
+```
+
+📌 **Why does it matter?**  
+A larger build context means slower builds, bigger images, and possibly leaking secrets or unnecessary files.  
+Using `.dockerignore` is a **best practice**!
+
+---
+
+### 🧼 Step 8: Clean up
+
+```bash
+docker stop my_flask_app
+docker rm my_flask_app
+docker rmi flask-hello flask-without-ignore
+```
+
+---
 
 </details>
 
 <details>
-<summary><strong>Task 4 – Custom Networking and Multi-container Setup</strong></summary>
+<summary><strong>Task 4 – Custom Networking and Multi-container Setup ✅</strong></summary>
 
-Create a custom Docker network with `docker network create mynet`. Run two containers (e.g., web app and database) on the same network. Ensure they can talk to each other using container names.
+✅ **Goal**: Create a custom Docker network and run two containers on it so they can communicate by container names.
+
+---
+
+### 🧰 Step-by-step Instructions
+
+1. **Create a custom Docker network**
+
+```bash
+docker network create mynet
+```
+
+2. **List all Docker networks to see the newly created network**
+
+```bash
+docker network ls
+```
+
+This will output something like:
+
+| NETWORK ID   |  NAME  | DRIVER | SCOPE   |
+|--------------|--------|--------|---------|
+| 2b3cd0e8b3c4 | bridge | bridge | local   |
+| 2074d312a583 | host   | host   | local   |
+| ee5a1e80c9af | mynet  | bridge | local   |
+| 3901d607a1bd | none   | none    | local  |
+
+---
+
+3. **Run a database container (e.g., MySQL) attached to the custom network**
+
+```bash
+docker run -d --name mydb --network mynet
+-e MYSQL_USER=myuser -e MYSQL_ROOT_PASSWORD=rootpassword mysql:8
+```
+
+**Explanation of command parts:**
+
+- `docker run` — Runs a new container.
+- `-d` — Runs the container in detached mode (in the background).
+- `--name mydb` — Assigns the name `mydb` to the container (makes it easier to reference).
+- `--network mynet` — Connects the container to the custom Docker network `mynet`.
+- `-e MYSQL_USER=myuser -e MYSQL_ROOT_PASSWORD=rootpassword` — Sets an environment variable inside the container to configure MySQL user and password.
+- `mysql:8` — Uses the official MySQL image, version 8.
+
+---
+
+4. **Run a web app container (e.g., NGINX) attached to the same network**
+
+```bash
+docker run -d --name myweb --network mynet -p 8080:80 nginx
+```
+
+**Explanation of command parts:**
+
+- `docker run` — Runs a new container.
+- `-d` — Runs the container in detached mode.
+- `--name myweb` — Assigns the name `myweb` to the container.
+- `--network mynet` — Connects the container to the custom Docker network `mynet`.
+- `-p 8080:80` — Maps port 80 inside the container (NGINX default) to port 8080 on the host machine, so you can access the web server via `http://localhost:8080`.
+- `nginx` — Uses the official NGINX image.
+
+---
+
+5. **Verify communication between containers**
+
+- Enter the web container's shell:
+
+```bash
+docker exec -it myweb sh
+```
+
+- From inside the container, ping the database container by its name:
+
+```bash
+ping mydb
+```
+
+If you see successful ping replies, it means the containers can resolve and communicate using their container names, thanks to the custom network.
+
+---
+
+### 🧼 Cleanup
+
+To stop and remove containers and the network:
+
+```bash
+docker stop myweb mydb
+docker rm myweb mydb
+docker network rm mynet
+```
 
 </details>
+
 
 <details>
 <summary><strong>Task 5 – Docker Compose Intro</strong></summary>
