@@ -558,7 +558,130 @@ docker network rm mynet
 <details>
 <summary><strong>Task 6 – Monitoring & Logging Basics</strong></summary>
 
-Add `HEALTHCHECK` to your Dockerfile to monitor container health. Install and use a simple logging method inside your app (e.g., log HTTP requests). Set up `docker logs` and `docker inspect` to validate container status and health.
+## ✅ **Goal**
+Learn how to add basic monitoring and logging to a containerized application.  
+This includes setting up a health check, logging HTTP requests, and checking container health and logs using Docker CLI.
+
+---
+
+## 📄 Files
+
+### 🐍 `app.py`
+
+```bash
+import logging
+from flask import Flask, request
+
+app = Flask(__name__)
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+
+@app.before_request
+def log_request_info():
+    app.logger.info(f"{request.method} {request.path} from {request.remote_addr}")
+    
+@app.route("/")
+def hello():
+    return "Hello from Docker"
+
+@app.route("/health")
+def health():
+    return "OK", 200
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+```
+
+---
+
+### 🐳 `Dockerfile`
+
+```bash
+# 🔹 Base image: using lightweight official Python image with pip
+FROM python:3.11-slim
+
+# 🔹 Set working directory inside container
+WORKDIR /app
+
+# 🔹 Copy files to container
+COPY app.py .
+COPY requirements.txt .
+
+# 🔹 Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 🔹 Optional: document the port used by the app (Flask uses 5000)
+EXPOSE 5000
+
+# 🔹 Healthcheck to monitor the container
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:5000/health || exit 1
+
+# 🔹 Run the app when the container starts
+CMD ["python", "app.py"]
+```
+
+#### 🔍 HEALTHCHECK Parameters Breakdown
+
+| Parameter             | Description                                                                                   |
+|-----------------------|-----------------------------------------------------------------------------------------------|
+| `--interval=30s`      | Time between running each health check (default: 30s here).                                   |
+| `--timeout=5s`        | Maximum time allowed for the health check command to run (default: 5s here).                  |
+| `--start-period=5s`   | Grace period after container starts before health checks begin (useful for slow startups).    |
+| `--retries=3`         | Number of consecutive failures needed before marking the container as `unhealthy`.            |
+| `CMD curl -f http://localhost:5000/health \|\| exit 1` | Command to execute; returns success if the endpoint responds with status code 200. |
+
+---
+
+## ▶️ How to Run
+
+Build and run the container:
+
+```bash
+docker build -t flask-healthcheck .
+docker run -p 5000:5000 flask-healthcheck
+```
+---
+
+## 🔍 How to Test
+
+### 1. **Check logs**
+
+To see the logged requests:
+
+```bash
+docker logs <container_id>
+```
+
+You should see log entries like:
+
+```txt
+INFO:werkzeug:GET / from 172.17.0.1
+```
+
+---
+
+### 2. **Check health status**
+
+Run:
+
+```bash
+docker inspect --format='{{json .State.Health}}' <container_id>
+```
+
+Expected output:
+
+```txt
+{
+  "Status": "healthy",
+  ...
+}
+```
+
+You can also simulate failure by temporarily changing the `/health` route or blocking port 5000.
+
+---
 
 </details>
 
