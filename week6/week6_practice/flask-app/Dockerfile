@@ -14,5 +14,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 🔹 Optional: document the port used by the app (Flask uses 5000)
 EXPOSE 5000
 
+# 🔹 Healthcheck to monitor the container
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:5000/health || exit 1
+
 # 🔹 Run the app when the container starts
 CMD ["python", "app.py"]
