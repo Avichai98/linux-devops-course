@@ -439,7 +439,7 @@ docker network rm mynet
 
 
 <details>
-<summary><strong>Task 5 – Docker Compose Intro</strong></summary>
+<summary><strong>Task 5 – Docker Compose Intro ✅</strong></summary>
 
 ✅ **Goal**: Create a multi-service Docker environment with NGINX and MySQL using Docker Compose, with custom network and persistent volumes.
 
@@ -556,7 +556,7 @@ docker network rm mynet
 </details>
 
 <details>
-<summary><strong>Task 6 – Monitoring & Logging Basics</strong></summary>
+<summary><strong>Task 6 – Monitoring & Logging Basics ✅</strong></summary>
 
 ## ✅ **Goal**
 Learn how to add basic monitoring and logging to a containerized application.  
@@ -686,12 +686,178 @@ You can also simulate failure by temporarily changing the `/health` route or blo
 </details>
 
 <details>
-<summary><strong>Task 7 – Advanced Docker Features</strong></summary>
+<summary><strong>Task 7 – Advanced Docker Features ✅</strong></summary>
 
-- Tag your image with versions like `myapp:1.0.0`
-- Use `docker push` to upload to Docker Hub (optional)
-- Use `node:alpine` or `python:slim` to compare performance and size
-- Connect your container status to Slack via webhook or simulate a post-build notification
-- Bonus: Build a small web app that logs hits and returns a status code (200/500) for healthcheck testing
+✅ **Goal**: Learn advanced Docker features such as tagging, pushing to Docker Hub, using lightweight base images, and building an advanced healthcheck with random failures.
+
+---
+
+### 🏷️ Step 1: Tagging Docker Images
+
+After building your Docker image, you can tag it with a version:
+
+```bash
+docker build -t myapp:1.0.0 .
+```
+
+You can also add multiple tags to the same image:
+
+```bash
+docker tag myapp:1.0.0 myapp:latest
+```
+
+---
+
+### 🚀 Step 2: (Optional) Push to Docker Hub
+
+If you have a Docker Hub account:
+
+1. Log in:
+
+```bash
+docker login
+```
+
+2. Tag your image with your Docker Hub username (replace `yourusername`):
+
+```bash
+docker tag myapp:1.0.0 yourusername/myapp:1.0.0
+```
+
+3. Push it:
+
+```bash
+docker push yourusername/myapp:1.0.0
+```
+
+---
+
+### ⚖️ Step 3: Use Lightweight Base Images
+
+We're already using:
+
+```Dockerfile
+FROM python:3.11-slim
+```
+
+This slim image is much smaller than full images, reducing size and improving performance.
+
+You can compare different image sizes:
+
+| Image          | Size      |
+|----------------|-----------|
+| python:3.11    | ~1 GB     |
+| python:3.11-slim | ~45-60 MB |
+
+Using slim (or alpine when possible) is considered best practice.
+
+---
+
+### 🔧 Step 4: Bonus - Advanced Healthcheck Testing App
+
+We will modify the Flask app to simulate random failures, so the healthcheck has meaning.
+
+#### Updated app.py
+
+```python
+import logging
+import random
+from flask import Flask, request
+
+app = Flask(__name__)
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+
+@app.before_request
+def log_request_info():
+    app.logger.info(f"{request.method} {request.path} from {request.remote_addr}")
+
+@app.route("/")
+def hello():
+    return "Hello from Docker"
+
+@app.route("/health")
+def health():
+    # Randomly fail the healthcheck 20% of the time
+    if random.random() < 0.2:
+        return "UNHEALTHY", 500
+    return "OK", 200
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+```
+
+#### Explanation
+
+- We added `import random`.
+- On every `/health` request, there is a 20% chance it returns 500.
+- This simulates real-world unstable apps for healthcheck testing.
+
+#### Updated Dockerfile
+
+```Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY app.py .
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+EXPOSE 5000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:5000/health || exit 1
+
+CMD ["python", "app.py"]
+```
+
+#### requirements.txt
+
+```bash
+flask
+```
+
+---
+
+### 🔍 Step 5: Testing the Healthcheck
+
+Build the image:
+
+```bash
+docker build -t myapp:1.0.0 .
+```
+
+Run the container:
+
+```bash
+docker run -p 5000:5000 --name my_flask_app myapp:1.0.0
+```
+
+Check health status:
+
+```bash
+docker inspect my_flask_app --format='{{json .State.Health}}' | jq
+```
+
+You should sometimes see `"Status": "healthy"` and sometimes `"unhealthy"` depending on the random failures.
+
+View logs:
+
+```bash
+docker logs my_flask_app
+```
+
+---
+
+### 🧼 Cleanup
+
+```bash
+docker stop my_flask_app
+docker rm my_flask_app
+docker rmi myapp:1.0.0
+```
 
 </details>
