@@ -1,4 +1,5 @@
 import logging
+import random
 from flask import Flask, request
 
 app = Flask(__name__)
@@ -9,10 +10,16 @@ logging.basicConfig(level=logging.INFO)
 @app.before_request
 def log_request_info():
     app.logger.info(f"{request.method} {request.path} from {request.remote_addr}")
-    
+
 @app.route("/")
-def hello():
-    return "Hello from Docker"
+def index():
+    status = random.choice([200, 500])
+    if status == 200:
+        app.logger.info("Request handled successfully (200 OK)")
+        return "Everything is fine!", 200
+    else:
+        app.logger.error("Internal Server Error (500)")
+        return "Something went wrong!", 500
 
 @app.route("/health")
 def health():
