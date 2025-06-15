@@ -1,0 +1,35 @@
+services:
+  web:
+    image: nginx:alpine
+    container_name: my_nginx
+    ports:
+      - "8080:80"
+    networks:
+      - mynet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  db:
+    image: mysql:8
+    container_name: my_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - mynet
+  
+volumes:
+  db_data:
+
+networks:
+  mynet:
+    driver: bridge
