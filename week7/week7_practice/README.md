@@ -566,42 +566,93 @@ These commands will build your Docker image (tagged as `myapp:alpine` for exampl
 </details>
 
 <details>
-<summary><strong>Task 6 – Azure VM Setup and Manual Deployment</strong></summary>
+<summary><strong>Task 6 – Azure VM Setup and Manual Deployment ✅</strong></summary>
 
 ✅ **Goal**: Deploy app manually to Azure VM.
 
 ---
 
-### 🔧 Steps:
+## 🔧 Steps:
 
-1. Create Azure VM (Linux, free tier if possible)
-2. SSH into VM:
+### 1️⃣ Create Azure VM  
+- Set up a **Linux VM (Ubuntu recommended, free-tier if available)** via Azure Portal.
+- **Ensure SSH access is enabled** (port 22 should be open).
+- Copy the **public IP address** of the VM for remote connection.
+
+### 2️⃣ Connect to the VM via SSH  
+To connect, use the following command:
 
 ```bash
 ssh azureuser@<public-ip>
 ```
 
-3. Install Docker & Compose:
+If authentication fails, verify that:
+- You are using the correct **username** (default on Ubuntu VMs is usually `azureuser`).
+- You have **uploaded your SSH key** in Azure Portal during VM creation.
+- Your **local SSH key** matches the VM's public key (`~/.ssh/id_rsa.pub`).
+
+If you're using **password-based authentication**, Azure might require additional configurations. You can check authentication settings in Azure Portal under *VM > Networking > SSH settings*.
+
+### 3️⃣ Install Docker & Docker Compose  
+If Docker isn't installed, run:
 
 ```bash
 sudo apt update
-sudo apt install docker.io docker-compose -y
+sudo apt install ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo "deb [signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-4. Copy project files using `scp`:
+Verify installation:
+
+```bash
+docker --version
+docker compose version
+```
+
+### 4️⃣ Copy Project Files to VM  
+Transfer your project files using **`scp`**:
 
 ```bash
 scp -r ./project azureuser@<public-ip>:~/project
 ```
 
-5. Deploy:
+🔹 **Ensure SSH is working before running this command**.  
+🔹 If using an SSH key, you might need `-i ~/.ssh/id_rsa` if not using the default key.
+
+### 5️⃣ Deploy the App  
 
 ```bash
 cd project
 docker-compose up -d
 ```
 
+🔹 This starts the application in the background (`-d` = detached mode).  
+🔹 Ensure **`docker-compose.yml`** exists inside the `project` directory.
+
+### 6️⃣ Expose the Application on Public Port  
+By default, Azure blocks external access to ports.  
+To allow access to **port 3000**, create a security rule in Azure:
+
+1. Go to **Azure Portal** → VM → **Networking**.
+2. Under **Inbound port rules**, click **Add rule**.
+3. Set:
+   - **Port:** `3000`
+   - **Protocol:** `TCP`
+   - **Action:** `Allow`
+   - **Priority:** `1000` (or any available number)
+   - **Source:** `Any`
+4. Click **Save**, then verify with:
+
+```bash
+curl http://<public-ip>:3000
+```
+
 ---
+
 </details>
 
 <details>
