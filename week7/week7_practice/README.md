@@ -301,83 +301,193 @@ docker-compose logs
 </details>
 
 <details>
-<summary><strong>Task 4 – Docker Compose + CI Integration</strong></summary>
+<summary><strong>Task 4 – Docker Compose + CI Integration ✅</strong></summary>
 
 ✅ **Goal**: Use Docker Compose in CI pipeline.
 
+The objective of this task is to **integrate Docker Compose into the CI pipeline** using GitHub Actions. In this workflow, we will:
+- **Run `docker-compose up`** to launch containers for end-to-end test runs.
+- **Test failure scenarios** and ensure container exit codes are properly handled.
+- **Push test results or logs as CI artifacts** for later review.
+
 ---
 
-### Sample GitHub Actions workflow:
+## GitHub Actions Workflow Explanation
 
-```yaml
-name: Docker Compose CI Integration
+This section explains each step of the workflow.
 
+### Trigger Conditions
+The workflow is triggered on every push and pull request.
+
+```bash
 on:
   push:
   pull_request:
+```
 
+### Job Setup
+A job called `integration-tests` is defined and runs on the latest Ubuntu image.
+
+```bash
 jobs:
   integration-tests:
     runs-on: ubuntu-latest
+```
 
-    env:
-      MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-      MYSQL_USER: ${{ secrets.MYSQL_USER }}
-      MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-      MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+### Environment Variables
+Sensitive MySQL credentials are loaded securely from GitHub Secrets.
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Set up Docker Compose
-        run: sudo apt-get update && sudo apt-get install docker-compose -y
-
-      - name: Docker Compose Up
-        run: docker-compose up -d
-
-      - name: Wait for healthcheck
-        run: |
-          echo "Waiting for Nginx healthcheck to be healthy..."
-          for i in {1..10}; do
-            health=$(docker inspect --format='{{.State.Health.Status}}' my_nginx)
-            if [ "$health" = "healthy" ]; then
-              echo "Nginx is healthy"
-              exit 0
-            fi
-            echo "Still not healthy... retry $i"
-            sleep 5
-          done
-          echo "Nginx failed to become healthy"
-          exit 1
-        shell: bash
-
-      - name: Integration Test (Check Web Response)
-        run: |
-          docker exec my_nginx curl -f http://localhost:80
-
-      - name: Collect logs
-        run: docker-compose logs > docker-logs.txt
-
-      - name: Upload logs as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-logs
-          path: docker-logs.txt
-          
-      - name: Docker Compose Down
-        if: always()
-        run: docker-compose down
+```bash
+env:
+  MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+  MYSQL_USER: ${{ secrets.MYSQL_USER }}
+  MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+  MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
 ```
 
 ---
+
+## Workflow Steps
+
+### 1. Checkout Code
+Retrieves the latest repository code.
+
+```bash
+- name: Checkout code
+  uses: actions/checkout@v4
+```
+
+### 2. Set Up Docker Buildx
+**Detailed Explanation:**  
+Docker Buildx is an extended feature provided by the Docker CLI that uses BuildKit as the backend. It enables:
+- **Multi-platform builds:** Create images for different CPU architectures (e.g., x86, ARM) from a single Dockerfile.
+- **Improved caching:** Offers advanced caching mechanisms not available in the legacy build system.
+- **Enhanced features:** Supports new build options and improved performance for complex Dockerfiles.
+
+This step ensures that our CI environment can build images using these improved and flexible features.
+
+
+```bash
+- name: Set up Docker Buildx
+  uses: docker/setup-buildx-action@v3
+```
+
+### 3. Install Docker Compose
+Installs Docker Compose so that we can run Docker Compose commands.
+
+```bash
+- name: Set up Docker Compose
+  run: sudo apt-get update && sudo apt-get install docker-compose -y
+```
+
+### 4. Start Docker Compose Services
+Brings up all defined services from the Compose file in detached mode.
+
+```bash
+- name: Docker Compose Up
+  run: docker-compose up -d
+  working-directory: ./week7/week7_practice
+```
+
+### 5. Verify Running Containers
+Lists all running and stopped containers to help diagnose potential startup issues.
+
+```bash
+- name: Check running containers
+  run: docker ps -a
+```
+
+### 6. Health Check for Nginx
+Waits until the Nginx container reports a "healthy" status. It checks the status every 5 seconds (up to 10 attempts). If Nginx is not healthy, it exits with an error.
+
+- **`shell: bash`**
+
+  This line specifies that the commands in the `run` block should be executed using the Bash shell. This is necessary because the command block contains Bash-specific syntax (like loops and conditional statements) that might not be correctly interpreted by other shells.
+
+```bash
+- name: Wait for healthcheck
+  run: |
+    echo "Waiting for Nginx healthcheck to be healthy..."
+    for i in {1..10}; do
+      health=$(docker inspect --format='{{.State.Health.Status}}' my_nginx)
+      if [ "$health" = "healthy" ]; then
+        echo "Nginx is healthy"
+        exit 0
+      fi
+      echo "Still not healthy... retry $i"
+      sleep 5
+    done
+    echo "Nginx failed to become healthy"
+    exit 1
+  shell: bash
+```
+
+### 7. Integration Test (Check Web Response)
+Executes a curl command inside the Nginx container to validate the web service response. If the test fails, this step exits with an error.
+
+```bash
+- name: Integration Test (Check Web Response)
+  run: |
+    docker exec my_nginx curl -f http://localhost:80 || { echo "Web response failed!"; exit 1; }
+```
+
+### 8. Create Artifact Directory
+Creates the directory that will store the CI artifact (logs). The use of `if: always()` ensures this step runs even if earlier steps failed.
+
+```bash
+- name: Create artifact directory
+  if: always()
+  run: mkdir -p artifact
+  working-directory: ./week7/week7_practice
+```
+
+### 9. Collect Logs
+Collects logs from Docker Compose and writes them to a file. This is crucial for debugging, even if the CI job fails.
+
+```bash
+- name: Collect logs
+  if: always()
+  run: docker-compose logs > docker-logs.txt
+  working-directory: ./week7/week7_practice
+```
+
+### 10. Check Log File Existence
+Verifies that the log file exists. If it doesn’t, the workflow fails with an error message.
+
+```bash
+- name: Check if logs file exists
+  if: always()
+  run: ls -l ./week7/week7_practice/docker-logs.txt || { echo "Log file not found"; exit 1; }
+```
+
+### 11. Upload Logs as Artifact
+Uploads the log file as a CI artifact so that logs can be downloaded and reviewed post-run. The step runs regardless of previous failures.
+
+```bash
+- name: Upload logs as artifact
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: docker-logs
+    path: ./week7/week7_practice/docker-logs.txt
+```
+
+### 12. Cleanup Docker Compose
+Terminates and removes the Docker Compose services. The `if: always()` condition ensures cleanup occurs even if earlier steps have failed.
+
+```bash
+- name: Docker Compose Down
+  if: always()
+  run: docker-compose down
+  working-directory: ./week7/week7_practice
+```
+
+---
+
 </details>
 
 <details>
-<summary><strong>Task 5 – Lightweight Base Images and Optimization</strong></summary>
+<summary><strong>Task 5 – Lightweight Base Images and Optimization ✅</strong></summary>
 
 ✅ **Goal**: Use optimized base images and compare sizes.
 
@@ -386,25 +496,73 @@ jobs:
 ### 🔧 Use `python:3.11-slim` or `python:3.11-alpine`
 
 ```dockerfile
-FROM python:3.11-alpine
+# 🔹 Base image: using lightweight official Python image with pip
+FROM python:3.11-slim
 
+# 🔹 Set working directory inside container
 WORKDIR /app
 
-COPY . .
+# 🔹 Copy files to container
+COPY app.py .
+COPY requirements.txt .
 
-RUN pip install -r requirements.txt
+# 🔹 Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
+# 🔹 Optional: document the port used by the app (Flask uses 5000)
+EXPOSE 5000
+
+# 🔹 Healthcheck to monitor the container
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:5000/health || exit 1
+
+# 🔹 Run the app when the container starts
 CMD ["python", "app.py"]
 ```
 
-### 🔧 Build and compare sizes
+### Additional Explanations:
+
+1. **Using a Minimal Base Image**  
+   We are using `python:3.11-slim` in the Dockerfile. This image is a lightweight alternative compared to the full Python images, resulting in a smaller final image size and faster build times.  
+   An alternative to consider is `python:3.11-alpine` which is even smaller; however, be aware that Alpine-based images sometimes have compatibility issues with certain Python packages.
+
+2. **Multi-Stage Builds**  
+   For more complex projects, multi-stage builds allow you to segment the build process into different stages. This technique helps eliminate unnecessary build artifacts from the final image. A conceptual example for a Python project might look like this:
+
+```bash
+# Stage 1: Build stage
+FROM python:3.11-slim AS builder
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Stage 2: Final stage
+FROM python:3.11-slim
+WORKDIR /app
+# Only copy the necessary artifacts from the builder stage  
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY app.py .
+EXPOSE 5000
+CMD ["python", "app.py"]
+```
+
+*Note:* The above multi-stage build example is provided for projects where separation of build dependencies from runtime dependencies is beneficial. For a simple application, the single-stage Dockerfile might be sufficient.
+
+---
+
+## Build and Compare Image Sizes
+
+To rebuild your container using the chosen base image and compare image sizes, run the following commands:
 
 ```bash
 docker build -t myapp:alpine .
 docker images
 ```
 
+These commands will build your Docker image (tagged as `myapp:alpine` for example) and list all images with their sizes, allowing you to compare the optimized image size against previous builds.
+
 ---
+
 </details>
 
 <details>
