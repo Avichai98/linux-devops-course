@@ -50,6 +50,7 @@ jobs:
 
       - name: Collect logs
         run: docker-compose logs > docker-logs.txt
+        working-directory: ./week7/week7_practice
 
       - name: Upload logs as artifact
         uses: actions/upload-artifact@v4
