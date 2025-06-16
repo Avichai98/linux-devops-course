@@ -307,29 +307,70 @@ docker-compose logs
 
 ---
 
-### 🤧 Sample GitHub Actions workflow:
+### Sample GitHub Actions workflow:
 
 ```yaml
-name: Docker Compose CI
+name: Docker Compose CI Integration
 
-on: [push]
+on:
+  push:
+  pull_request:
 
 jobs:
-  compose-test:
+  integration-tests:
     runs-on: ubuntu-latest
+
+    env:
+      MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+      MYSQL_USER: ${{ secrets.MYSQL_USER }}
+      MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+      MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+
     steps:
-    - uses: actions/checkout@v3
-    - name: Install Docker Compose
-      run: sudo apt-get install docker-compose -y
-    - name: Build and Run
-      run: |
-        docker-compose up -d
-        docker-compose ps
-    - name: Run tests (example)
-      run: |
-        curl http://localhost:5000
-    - name: Shutdown
-      run: docker-compose down
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up Docker Compose
+        run: sudo apt-get update && sudo apt-get install docker-compose -y
+
+      - name: Docker Compose Up
+        run: docker-compose up -d
+
+      - name: Wait for healthcheck
+        run: |
+          echo "Waiting for Nginx healthcheck to be healthy..."
+          for i in {1..10}; do
+            health=$(docker inspect --format='{{.State.Health.Status}}' my_nginx)
+            if [ "$health" = "healthy" ]; then
+              echo "Nginx is healthy"
+              exit 0
+            fi
+            echo "Still not healthy... retry $i"
+            sleep 5
+          done
+          echo "Nginx failed to become healthy"
+          exit 1
+        shell: bash
+
+      - name: Integration Test (Check Web Response)
+        run: |
+          docker exec my_nginx curl -f http://localhost:80
+
+      - name: Collect logs
+        run: docker-compose logs > docker-logs.txt
+
+      - name: Upload logs as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-logs
+          path: docker-logs.txt
+          
+      - name: Docker Compose Down
+        if: always()
+        run: docker-compose down
 ```
 
 ---
