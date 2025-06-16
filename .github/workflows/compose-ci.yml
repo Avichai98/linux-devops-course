@@ -48,6 +48,9 @@ jobs:
         run: |
           docker exec my_nginx curl -f http://localhost:80
 
+      - run: mkdir -p artifact
+        working-directory: ./week7/week7_practice
+
       - name: Collect logs
         run: docker-compose logs > docker-logs.txt
         working-directory: ./week7/week7_practice
@@ -56,7 +59,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: docker-logs
-          path: docker-logs.txt
+          path: ./week7/week7_practice/docker-logs.txt
 
       - name: Docker Compose Down
         if: always()
