@@ -28,6 +28,9 @@ jobs:
         run: docker-compose up -d
         working-directory: ./week7/week7_practice
 
+      - name: Check running containers
+        run: docker ps -a
+      
       - name: Wait for healthcheck
         run: |
           echo "Waiting for Nginx healthcheck to be healthy..."
@@ -46,16 +49,24 @@ jobs:
 
       - name: Integration Test (Check Web Response)
         run: |
-          docker exec my_nginx curl -f http://localhost:80
+          docker exec my_nginx curl -f http://localhost:80 || { echo "Web response failed!"; exit 1; }
 
-      - run: mkdir -p artifact
+      - name: Create artifact directory
+        if: always()
+        run: mkdir -p artifact
         working-directory: ./week7/week7_practice
 
       - name: Collect logs
+        if: always()
         run: docker-compose logs > docker-logs.txt
         working-directory: ./week7/week7_practice
 
+      - name: Check if logs file exists
+        if: always()
+        run: ls -l ./week7/week7_practice/docker-logs.txt || { echo "Log file not found"; exit 1; }
+
       - name: Upload logs as artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: docker-logs
