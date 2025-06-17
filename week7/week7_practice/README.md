@@ -699,7 +699,7 @@ curl http://<public-ip>:8080
 </details>
 
 <details>
-<summary><strong>Task 7 – Deploy to Azure VM via CI/CD</strong></summary>
+<summary><strong>Task 7 – Deploy to Azure VM via CI/CD ✅</strong></summary>
 
 ✅ **Goal**: Automate deployment from CI to Azure VM.
 
@@ -768,54 +768,73 @@ jobs:
 
 ---
 
+### 🛠️ Setup SSH key
+
 ```yaml
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.AZURE_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p ${{ secrets.REMOTE_PORT }} ${{ secrets.REMOTE_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -p ${{ secrets.REMOTE_PORT }} ${{ secrets.AZURE_HOST }} >> ~/.ssh/known_hosts
         shell: bash
 ```
 
 ### 📘 Explanation:
-- Creates `.ssh` folder and adds the private SSH key from secrets.
-- Ensures the key is secure and adds the VM’s fingerprint to avoid SSH prompt interruptions.
+- `mkdir -p ~/.ssh`: Ensures the `.ssh` directory exists.
+- `echo ... > ~/.ssh/id_rsa`: Writes the private key from GitHub Secrets to the file system.
+- `chmod 600`: Restricts permissions so only the owner can read/write.
+- `ssh-keyscan`: Fetches the host’s SSH key to prevent "man-in-the-middle" warnings and appends it to `known_hosts`.
 
 ---
 
 ```yaml
-      - name: Rsync files to Azure VM
-        run: |
-          rsync -avz -e "ssh -p ${{ secrets.REMOTE_PORT }} -i ~/.ssh/id_rsa" ./week7/week7_practice/ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/home/${{ secrets.REMOTE_USER }}/app/
-        shell: bash
+rsync -avz -e "ssh -p ${{ secrets.REMOTE_PORT }} -i ~/.ssh/id_rsa" ./week7/week7_practice/ ${{ secrets.AZURE_USER }}@${{ secrets.AZURE_HOST }}:/home/${{ secrets.AZURE_USER }}/app/
 ```
 
-### 📘 Explanation:
-- Uses `rsync` over SSH to copy local files (`week7/week7_practice`) to the remote VM path `/home/azureuser/app/`.
-- `-a` (archive), `-v` (verbose), `-z` (compress data during transfer).
+**🔹 Explanation:**
+
+| Component | Description |
+|----------|-------------|
+| `rsync` | A powerful tool for efficiently transferring and synchronizing files between local and remote machines. It only sends the differences between files, saving bandwidth. |
+| `-a` (archive) | Enables archive mode, which preserves symbolic links, file permissions, timestamps, group, owner, and devices. This is ideal for directory transfers. |
+| `-v` (verbose) | Enables verbose output to see detailed progress of file transfers. |
+| `-z` (compress) | Compresses the file data during the transfer to reduce bandwidth usage and speed up the transfer over slower connections. |
+| `-e "ssh ..."` | Specifies the remote shell to use. Here, it is set to SSH with the following options: <br> - `-p`: sets the port used for SSH connection. <br> - `-i`: specifies the private SSH key to use. |
+| `./week7/week7_practice/` | The **source** directory. The trailing `/` means "sync the contents of this directory" (not the directory itself). |
+| `${{ secrets.AZURE_USER }}@${{ secrets.AZURE_HOST }}` | The remote SSH user and host to connect to. |
+| `/home/${{ secrets.AZURE_USER }}/app/` | The **destination** directory on the remote VM where files will be synced. |
 
 ---
 
 ```yaml
       - name: Run docker-compose up remotely
         run: |
-          ssh -p ${{ secrets.REMOTE_PORT }} -i ~/.ssh/id_rsa ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} \
-            "cd /home/${{ secrets.REMOTE_USER }}/project && docker compose up -d"
+          ssh -p ${{ secrets.REMOTE_PORT }} -i ~/.ssh/id_rsa ${{ secrets.AZURE_USER }}@${{ secrets.AZURE_HOST }} \
+            "cd /home/${{ secrets.AZURE_USER }}/app && docker compose up -d"
         shell: bash
 ```
 
 ### 📘 Explanation:
-- SSH into the VM and run `docker compose up -d` inside the `/home/<user>/project` directory.
-- Make sure that the folder name is correct — if you synced to `/app`, this may need to be updated to match.
+- This step uses the ssh command to remotely connect to your Azure VM.
+
+- The **-p** flag sets the SSH port to a custom value, as defined in the REMOTE_PORT secret. This is essential if your VM does not use the default port 22.
+
+- The -i ~/.ssh/id_rsa flag tells SSH which private key file to use for authentication.
+
+- Once the connection is established, the remote command changes into the /home/{user}/app directory.
+
+- The docker compose up -d command starts all containers defined in the docker-compose.yml file in detached mode (-d), meaning they will run in the background without blocking the terminal.
+
+- This ensures your application is deployed and running on the VM after each push to the main branch.
 
 ---
 
 ```yaml
       - name: Collect docker-compose logs remotely
         run: |
-          ssh -p ${{ secrets.REMOTE_PORT }} -i ~/.ssh/id_rsa ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} \
-            "cd /home/${{ secrets.REMOTE_USER }}/project && docker compose logs --no-color" > ./deploy-to-azure-vm.txt
+          ssh -p ${{ secrets.REMOTE_PORT }} -i ~/.ssh/id_rsa ${{ secrets.AZURE_USER }}@${{ secrets.AZURE_HOST }} \
+            "cd /home/${{ secrets.AZURE_USER }}/app && docker compose logs --no-color" > ./deploy-to-azure-vm.txt
         shell: bash
         continue-on-error: true
 ```
@@ -840,35 +859,27 @@ jobs:
 
 ---
 
+### 🔔 Notify Slack (on success or failure)
 ```yaml
-      - name: Notify Slack on success
-        if: success()
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          slack-message: |
-            ✅ Deployment to Azure VM succeeded.
-            See deployment logs artifact for details.
+      - name: Notify Slack (on success or failure)
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+          message="✅ Deployment to Azure VM succeeded."
+          else
+            message="❌ Deployment to Azure VM failed."
+          fi
+
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"$message\"}" \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
+        shell: bash
 ```
 
-### 📘 Explanation:
-- Sends a success message to Slack if the entire workflow completes successfully.
-
----
-
-```yaml
-      - name: Notify Slack on failure
-        if: failure()
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          slack-message: |
-            ❌ Deployment to Azure VM failed.
-            See deployment logs artifact for details.
-```
-
-### 📘 Explanation:
-- Sends a failure message to Slack if any previous step fails.
+### 📘 Explanation: 
+- Conditional message: checks the job status using `${{ job.status }}`.
+- Uses `curl` to POST a JSON message to the Slack webhook.
+- This replaces the need for two separate Slack steps.
 
 ---
 
@@ -876,7 +887,7 @@ jobs:
 
 - Automatic deployment to Azure VM on `main` push
 - Files copied via `rsync`
-- Remote `docker-compose up` on the VM
+- Remote `docker compose up` on the VM
 - Deployment logs saved as artifact
 - Slack notification on success/failure
 
