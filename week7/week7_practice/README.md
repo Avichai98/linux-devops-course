@@ -617,7 +617,7 @@ docker compose version
 Transfer your project files using **`scp`**:
 
 ```bash
-scp -r ./project azureuser@<public-ip>:~/project
+scp -r ./project azureuser@<public-ip>:~/app
 ```
 
 🔹 **Ensure SSH is working before running this command**.  
@@ -627,28 +627,71 @@ scp -r ./project azureuser@<public-ip>:~/project
 
 ```bash
 cd project
-docker-compose up -d
+sudo docker compose up -d
 ```
 
 🔹 This starts the application in the background (`-d` = detached mode).  
-🔹 Ensure **`docker-compose.yml`** exists inside the `project` directory.
+🔹 Ensure **`docker-compose.yml`** exists inside the `app` directory.
 
 ### 6️⃣ Expose the Application on Public Port  
-By default, Azure blocks external access to ports.  
-To allow access to **port 3000**, create a security rule in Azure:
+By default, Azure virtual machines are protected by **Network Security Groups (NSGs)** that block all **incoming** traffic except for specific allowed ports.  
+To access your app (e.g., running on port `8080`) **from the internet**, you need to manually allow inbound traffic to that port.
 
-1. Go to **Azure Portal** → VM → **Networking**.
-2. Under **Inbound port rules**, click **Add rule**.
-3. Set:
-   - **Port:** `3000`
-   - **Protocol:** `TCP`
-   - **Action:** `Allow`
-   - **Priority:** `1000` (or any available number)
-   - **Source:** `Any`
-4. Click **Save**, then verify with:
+### ✅ Steps to open port 8080:
+
+```yaml
+1. Go to Azure Portal → your VM → Networking tab.
+2. Under Inbound port rules, click + Add inbound port rule.
+3. Fill the form as follows:
+   - Source: Any  
+     → Allows connections from all external IP addresses (can restrict for security).
+   - Source port ranges: *  
+     → Accepts traffic from any source port (standard).
+   - Destination: Any  
+     → Refers to any destination IP within the VM (standard).
+   - Destination port ranges: 8080  
+     → The public port your container is exposed on (e.g., Nginx running on port 8080).
+   - Protocol: TCP  
+     → Most web traffic uses TCP; this is the common setting for web apps.
+   - Action: Allow  
+     → Approves traffic instead of denying it.
+   - Priority: 1010  
+     → Determines rule evaluation order; lower = higher priority. Must be unique.
+   - Name: Allow-Web-8080 (or any descriptive name)
+4. Click Add to apply the rule.
+```
+
+---
+
+### 🎯 Purpose of Each Field
+
+| Field                    | Meaning                                                                 |
+|--------------------------|-------------------------------------------------------------------------|
+| `Source`                 | Who is allowed to access. `Any` means anyone on the internet.          |
+| `Source port ranges`     | The port the client is using. `*` allows all.                          |
+| `Destination`            | Which IP in your VM is the target. `Any` is default.                   |
+| `Destination port ranges`| The port you want to open (e.g., `8080`).                              |
+| `Protocol`               | Usually `TCP` for web, `UDP` for streaming/games.                      |
+| `Action`                 | Whether to `Allow` or `Deny` the connection.                           |
+| `Priority`               | Lower numbers are evaluated first. Important if rules conflict.        |
+| `Name`                   | Just a label to identify the rule.                                     |
+
+---
+
+### 🔁 Inbound vs. Outbound – What's the Difference?
+
+| Direction  | Explanation                                                                 |
+|------------|-----------------------------------------------------------------------------|
+| **Inbound**  | Traffic **coming into** your VM from the internet (e.g., users accessing your app). |
+| **Outbound** | Traffic **going out** from your VM to the internet (e.g., your app calling an API). |
+
+- You typically **configure inbound rules** to allow external access.
+- **Outbound rules** are usually open by default, unless restricted for security reasons.
+
+### then verify with:
 
 ```bash
-curl http://<public-ip>:3000
+curl http://<public-ip>:8080
 ```
 
 ---
@@ -662,56 +705,180 @@ curl http://<public-ip>:3000
 
 ---
 
-### 🔧 Generate SSH key and add to VM:
+## 🔧 Generate SSH key and add to VM:
 
 ```bash
 ssh-keygen -t rsa -b 4096
 ssh-copy-id azureuser@<public-ip>
 ```
 
-### 🔧 Store SSH key as GitHub Secret
+## 🔑 Required GitHub Secrets
 
-- `AZURE_PRIVATE_KEY`
-- `AZURE_HOST`
-- `AZURE_USER`
+| Secret Name           | Description                                           |
+|-----------------------|-------------------------------------------------------|
+| `AZURE_PRIVATE_KEY`   | Paste contents of `~/.ssh/azure_vm`                  |
+| `AZURE_HOST`          | VM public IP (e.g., `20.123.45.67`)                  |
+| `AZURE_USER`          | Username of your VM (usually `azureuser`)           |
+| `REMOTE_PORT`         | SSH port (default: `22`)                             |
+| `SLACK_WEBHOOK_URL`   | Webhook URL from Slack Incoming Webhooks             |
+| `MYSQL_ROOT_PASSWORD` | Your MySQL root password                             |
+| `MYSQL_USER`          | DB user                                               |
+| `MYSQL_PASSWORD`      | DB user password                                     |
+| `MYSQL_DATABASE`      | DB name                                               |
 
-### 🔧 Sample GitHub Actions workflow:
+---
 
-[yaml]
-name: Deploy to Azure VM
+## ⚙️ GitHub Actions Workflow
+
+Create a file `.github/workflows/d.github/workflows/deploy-to-azure-vm.yml`:
+
+```yaml
+name: Deploy App to Azure VM
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
+env:
+  MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+  MYSQL_USER: ${{ secrets.MYSQL_USER }}
+  MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+  MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+```
+
+### 📘 Explanation:
+- The workflow triggers on every push to the `main` branch.
+- MySQL environment variables are injected for consistency across deployment steps or Docker.
+
+---
+
+```yaml
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
+```
 
-    - name: Copy files to VM
-      uses: appleboy/scp-action@v0.1.3
-      with:
-        host: ${{ secrets.AZURE_HOST }}
-        username: ${{ secrets.AZURE_USER }}
-        key: ${{ secrets.AZURE_PRIVATE_KEY }}
-        source: "*"
-        target: "/home/${{ secrets.AZURE_USER }}/project"
+### 📘 Explanation:
+- Uses the official GitHub Action to pull the latest version of the repository code to the runner machine.
 
-    - name: Deploy via SSH
-      uses: appleboy/ssh-action@v0.1.6
-      with:
-        host: ${{ secrets.AZURE_HOST }}
-        username: ${{ secrets.AZURE_USER }}
-        key: ${{ secrets.AZURE_PRIVATE_KEY }}
-        script: |
-          cd project
-          docker-compose pull
-          docker-compose down
-          docker-compose up -d
+---
+
+```yaml
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ secrets.REMOTE_PORT }} ${{ secrets.REMOTE_HOST }} >> ~/.ssh/known_hosts
+        shell: bash
+```
+
+### 📘 Explanation:
+- Creates `.ssh` folder and adds the private SSH key from secrets.
+- Ensures the key is secure and adds the VM’s fingerprint to avoid SSH prompt interruptions.
+
+---
+
+```yaml
+      - name: Rsync files to Azure VM
+        run: |
+          rsync -avz -e "ssh -p ${{ secrets.REMOTE_PORT }} -i ~/.ssh/id_rsa" ./week7/week7_practice/ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/home/${{ secrets.REMOTE_USER }}/app/
+        shell: bash
+```
+
+### 📘 Explanation:
+- Uses `rsync` over SSH to copy local files (`week7/week7_practice`) to the remote VM path `/home/azureuser/app/`.
+- `-a` (archive), `-v` (verbose), `-z` (compress data during transfer).
+
+---
+
+```yaml
+      - name: Run docker-compose up remotely
+        run: |
+          ssh -p ${{ secrets.REMOTE_PORT }} -i ~/.ssh/id_rsa ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} \
+            "cd /home/${{ secrets.REMOTE_USER }}/project && docker compose up -d"
+        shell: bash
+```
+
+### 📘 Explanation:
+- SSH into the VM and run `docker compose up -d` inside the `/home/<user>/project` directory.
+- Make sure that the folder name is correct — if you synced to `/app`, this may need to be updated to match.
+
+---
+
+```yaml
+      - name: Collect docker-compose logs remotely
+        run: |
+          ssh -p ${{ secrets.REMOTE_PORT }} -i ~/.ssh/id_rsa ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} \
+            "cd /home/${{ secrets.REMOTE_USER }}/project && docker compose logs --no-color" > ./deploy-to-azure-vm.txt
+        shell: bash
+        continue-on-error: true
+```
+
+### 📘 Explanation:
+- Remotely collects the logs of the running services after deployment.
+- Output is saved to a file `deploy-to-azure-vm.txt` in the runner.
+- Even if this step fails, the workflow continues (`continue-on-error: true`).
+
+---
+
+```yaml
+      - name: Upload deployment logs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-to-azure-vm-logs
+          path: ./deploy-to-azure-vm.txt
+```
+
+### 📘 Explanation:
+- Uploads the log file as an artifact in GitHub so you can download it from the Actions page.
+
+---
+
+```yaml
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          slack-message: |
+            ✅ Deployment to Azure VM succeeded.
+            See deployment logs artifact for details.
+```
+
+### 📘 Explanation:
+- Sends a success message to Slack if the entire workflow completes successfully.
+
+---
+
+```yaml
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          slack-message: |
+            ❌ Deployment to Azure VM failed.
+            See deployment logs artifact for details.
+```
+
+### 📘 Explanation:
+- Sends a failure message to Slack if any previous step fails.
+
+---
+
+## 📦 What You Get
+
+- Automatic deployment to Azure VM on `main` push
+- Files copied via `rsync`
+- Remote `docker-compose up` on the VM
+- Deployment logs saved as artifact
+- Slack notification on success/failure
 
 ---
 </details>
