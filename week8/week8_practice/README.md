@@ -202,7 +202,7 @@ The `NSG` column will show a full Azure resource ID path (e.g., `/subscriptions/
 ---
 
 <details>
-<summary><strong>Task 4 – Deploy a Simple Web App to the VM </strong></summary>
+<summary><strong>Task 4 – Deploy a Simple Web App to the VM ✅</strong></summary>
 
 ✅ **Goal**: SSH into your VM and deploy a small web server using Flask.
 
@@ -223,7 +223,7 @@ docker compose version
 Transfer your project files using **`scp`**:
 
 ```bash
-scp -r ./project azureuser@<public-ip>:~/app
+scp -r ./project azureuser@<public-ip>:~/week8
 ```
 
 🔹 **Ensure SSH is working before running this command**.  
@@ -232,18 +232,18 @@ scp -r ./project azureuser@<public-ip>:~/app
 ### 5️⃣ Deploy the App  
 
 ```bash
-cd project
+cd week8
 sudo docker compose up -d
 ```
 
 🔹 This starts the application in the background (`-d` = detached mode).  
-🔹 Ensure **`docker-compose.yml`** exists inside the `app` directory.
+🔹 Ensure **`docker-compose.yml`** exists inside the `week8` directory.
 
 ### 6️⃣ Expose the Application on Public Port  
 By default, Azure virtual machines are protected by **Network Security Groups (NSGs)** that block all **incoming** traffic except for specific allowed ports.  
-To access your app (e.g., running on port `8080`) **from the internet**, you need to manually allow inbound traffic to that port.
+To access your app (e.g., running on port `8000`) **from the internet**, you need to manually allow inbound traffic to that port.
 
-### ✅ Steps to open port 8080:
+### ✅ Steps to open port 8000:
 
 ```yaml
 1. Go to Azure Portal → your VM → Networking tab.
@@ -255,7 +255,7 @@ To access your app (e.g., running on port `8080`) **from the internet**, you nee
      → Accepts traffic from any source port (standard).
    - Destination: Any  
      → Refers to any destination IP within the VM (standard).
-   - Destination port ranges: 8080  
+   - Destination port ranges: 8000  
      → The public port your container is exposed on (e.g., Nginx running on port 8080).
    - Protocol: TCP  
      → Most web traffic uses TCP; this is the common setting for web apps.
@@ -272,7 +272,7 @@ To access your app (e.g., running on port `8080`) **from the internet**, you nee
 ### then verify with:
 
 ```bash
-curl http://<public-ip>:8080
+curl http://<public-ip>:3000
 ```
 
 ---
