@@ -1,11 +1,28 @@
 version: '3.9'
 
 services:
-  web:
-    image: nginx:alpine
-    container_name: my_nginx
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: my_backend
     ports:
-      - "8080:80"
+      - "8000:8000"
+    environment:
+      - MONGO_URI=mongodb://my_mongo:27017/mydatabase
+    depends_on:
+      - mongo
+    networks:
+      - mynet
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: my_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
     networks:
       - mynet
 

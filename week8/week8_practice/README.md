@@ -208,34 +208,74 @@ The `NSG` column will show a full Azure resource ID path (e.g., `/subscriptions/
 
 ---
 
-[bash]
+```bash
 ssh azureuser@<your-public-ip>
+```
 
-sudo apt update && sudo apt install python3-pip -y
-pip3 install flask
-[/bash]
+Verify installation:
 
-Create `app.py`:
+```bash
+docker --version
+docker compose version
+```
 
-[python]
-from flask import Flask
-app = Flask(__name__)
+### 4️⃣ Copy Project Files to VM  
+Transfer your project files using **`scp`**:
 
-@app.route('/')
-def hello():
-    return "Hello from Flask on Azure!"
+```bash
+scp -r ./project azureuser@<public-ip>:~/app
+```
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80)
-[/python]
+🔹 **Ensure SSH is working before running this command**.  
+🔹 If using an SSH key, you might need `-i ~/.ssh/id_rsa` if not using the default key.
 
-Run the app:
+### 5️⃣ Deploy the App  
 
-[bash]
-sudo python3 app.py
-[/bash]
+```bash
+cd project
+sudo docker compose up -d
+```
 
-Open your browser and visit: `http://<your-public-ip>`
+🔹 This starts the application in the background (`-d` = detached mode).  
+🔹 Ensure **`docker-compose.yml`** exists inside the `app` directory.
+
+### 6️⃣ Expose the Application on Public Port  
+By default, Azure virtual machines are protected by **Network Security Groups (NSGs)** that block all **incoming** traffic except for specific allowed ports.  
+To access your app (e.g., running on port `8080`) **from the internet**, you need to manually allow inbound traffic to that port.
+
+### ✅ Steps to open port 8080:
+
+```yaml
+1. Go to Azure Portal → your VM → Networking tab.
+2. Under Inbound port rules, click + Add inbound port rule.
+3. Fill the form as follows:
+   - Source: Any  
+     → Allows connections from all external IP addresses (can restrict for security).
+   - Source port ranges: *  
+     → Accepts traffic from any source port (standard).
+   - Destination: Any  
+     → Refers to any destination IP within the VM (standard).
+   - Destination port ranges: 8080  
+     → The public port your container is exposed on (e.g., Nginx running on port 8080).
+   - Protocol: TCP  
+     → Most web traffic uses TCP; this is the common setting for web apps.
+   - Action: Allow  
+     → Approves traffic instead of denying it.
+   - Priority: 1010  
+     → Determines rule evaluation order; lower = higher priority. Must be unique.
+   - Name: Allow-Web-8080 (or any descriptive name)
+4. Click Add to apply the rule.
+```
+
+---
+
+### then verify with:
+
+```bash
+curl http://<public-ip>:8080
+```
+
+---
 
 </details>
 
@@ -248,7 +288,7 @@ Open your browser and visit: `http://<your-public-ip>`
 
 ---
 
-[bash]
+```bash
 az storage account create \
   --name mystorageacct \
   --resource-group myResourceGroup \
@@ -264,7 +304,7 @@ az storage blob upload \
   --container-name mycontainer \
   --name sample.txt \
   --file ./sample.txt
-[/bash]
+```
 
 </details>
 
