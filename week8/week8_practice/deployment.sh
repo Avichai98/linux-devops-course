@@ -109,7 +109,20 @@ echo "NSG '$nsg_name' created successfully in resource group '$resource_group_na
 }
 
 create_nsg_rule() {
-  echo "Creating Network Security Group (NSG) rule..."
+  echo "Creating Network Security Group (NSG) rules..."
+  az network nsg rule create \
+    --resource-group "$resource_group_name" \
+    --nsg-name "$nsg_name" \
+    --name AllowSSH \
+    --priority 100 \
+    --direction Inbound \
+    --access Allow \
+    --protocol Tcp \
+    --destination-port-ranges 22 \
+    --source-address-prefixes "*" \
+    --destination-address-prefixes "*" \
+    --description "Allow SSH"
+
   az network nsg rule create \
     --resource-group "$resource_group_name" \
     --nsg-name "$nsg_name" \
