@@ -478,14 +478,15 @@ Creates a new Ubuntu VM with SSH keys, basic public IP, and 30GB OS disk.
 
 ---
 
-### 🔹 NSG Rule and Association
+### 🔹 NSG, NSG Rule, and Association
 
 ```bash
+create_nsg()
 create_nsg_rule()
 associate_nsg()
 ```
 
-Creates a rule to allow inbound TCP traffic on port 3000 and associates the NSG with the VM's NIC.
+Creates NSG, creates a rule to allow inbound TCP traffic on port 3000 and associates the NSG with the VM's NIC.
 
 ---
 
