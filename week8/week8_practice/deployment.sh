@@ -70,21 +70,34 @@ create_vm() {
   echo "VM '$vm_name' created successfully in resource group '$resource_group_name'."
 }
 
+get_public_ip() {
+  public_ip=$(az vm show \
+    --resource-group "$resource_group_name" \
+    --name "$vm_name" \
+    --show-details \
+    --query "publicIps" \
+    --output tsv)
+
+  echo "Public IP address of the VM: $public_ip"
+}
+
 setup_swap() {
   echo "Checking for existing swap..."
-  if swapon --show | grep -q "/swapfile"; then
-    echo "Swapfile already exists and is active."
-  else
-    echo "Creating 1GB swapfile at /swapfile..."
-    sudo fallocate -l 1G /swapfile
-    sudo chmod 600 /swapfile
-    sudo mkswap /swapfile
-    sudo swapon /swapfile
-    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-    echo "Swapfile created and enabled."
-  fi
-  echo "Current swap status:"
-  free -h
+  ssh -i ~/.ssh/mynewkey "$vm_admin_username@$public_ip" bash -s << 'EOF'
+if swapon --show | grep -q "/swapfile"; then
+  echo "Swapfile already exists and is active."
+else
+  echo "Creating 1GB swapfile at /swapfile..."
+  sudo fallocate -l 1G /swapfile
+  sudo chmod 600 /swapfile
+  sudo mkswap /swapfile
+  sudo swapon /swapfile
+  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+  echo "Swapfile created and enabled."
+fi
+echo "Current swap status:"
+free -h
+EOF
 }
 
 create_nsg() {
@@ -119,17 +132,6 @@ associate_nsg() {
     --name "${vm_name}VMNic" \
     --resource-group "$resource_group_name" \
     --network-security-group "$nsg_name"
-}
-
-get_public_ip() {
-  public_ip=$(az vm show \
-    --resource-group "$resource_group_name" \
-    --name "$vm_name" \
-    --show-details \
-    --query "publicIps" \
-    --output tsv)
-
-  echo "Public IP address of the VM: $public_ip"
 }
 
 # ======= DEPLOYMENT =======
@@ -182,11 +184,11 @@ main() {
   create_resource_group
   generate_ssh_key_if_needed
   create_vm
+  get_public_ip
   setup_swap
   create_nsg
   create_nsg_rule
   associate_nsg
-  get_public_ip
   transfer_files
   deploy_app
   cleanup_resources
