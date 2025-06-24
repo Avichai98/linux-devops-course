@@ -173,7 +173,7 @@ deploy_app() {
 
     echo "Running the application..."
     cd ~/week8 || exit
-    docker compose up -d
+    sudo docker compose up -d
 EOF
 
   echo "Application is running. You can access it at http://$public_ip:3000"
