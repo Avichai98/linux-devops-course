@@ -65,7 +65,6 @@ create_vm() {
     --os-disk-size-gb 30 \
     --storage-sku Standard_LRS \
     --public-ip-sku Standard \
-    --no-wait
 
   echo "VM '$vm_name' created successfully in resource group '$resource_group_name'."
 }
