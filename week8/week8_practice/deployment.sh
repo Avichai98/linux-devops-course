@@ -70,6 +70,15 @@ create_vm() {
   echo "VM '$vm_name' created successfully in resource group '$resource_group_name'."
 }
 
+create_nsg() {
+echo "Creating Network Security Group (NSG)..."
+az network nsg create \
+  --resource-group "$resource_group_name" \
+  --name "$nsg_name" \
+  --location westeurope
+echo "NSG '$nsg_name' created successfully in resource group '$resource_group_name'."
+}
+
 create_nsg_rule() {
   echo "Creating Network Security Group (NSG) rule..."
   az network nsg rule create \
@@ -156,6 +165,7 @@ main() {
   create_resource_group
   generate_ssh_key_if_needed
   create_vm
+  create_nsg
   create_nsg_rule
   associate_nsg
   get_public_ip
