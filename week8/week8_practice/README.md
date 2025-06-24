@@ -478,6 +478,16 @@ Creates a new Ubuntu VM with SSH keys, basic public IP, and 30GB OS disk.
 
 ---
 
+### 🔹 Public IP
+
+```bash
+get_public_ip()
+```
+
+Retrieves the VM's public IP address.
+
+---
+
 ### 🔹 Swap Setup
 
 The script automatically checks if a 1GB swapfile exists on the VM.  
@@ -496,16 +506,6 @@ associate_nsg()
 ```
 
 Creates NSG, creates a rule to allow inbound TCP traffic on port 3000 and associates the NSG with the VM's NIC.
-
----
-
-### 🔹 Public IP
-
-```bash
-get_public_ip()
-```
-
-Retrieves the VM's public IP address.
 
 ---
 
