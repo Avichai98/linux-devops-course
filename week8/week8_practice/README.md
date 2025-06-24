@@ -478,6 +478,15 @@ Creates a new Ubuntu VM with SSH keys, basic public IP, and 30GB OS disk.
 
 ---
 
+### 🔹 Swap Setup
+
+The script automatically checks if a 1GB swapfile exists on the VM.  
+If not, it creates and enables a 1GB swapfile at `/swapfile` to improve memory management and prevent issues on low-RAM VMs.
+
+This helps especially on smaller Azure VM sizes to avoid out-of-memory errors during app deployment or Docker installation.
+
+---
+
 ### 🔹 NSG, NSG Rule, and Association
 
 ```bash
