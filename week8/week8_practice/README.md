@@ -132,10 +132,10 @@ az network nsg rule create \
   --direction Inbound \
   --access Allow \
   --protocol Tcp \
-  --destination-port-ranges 80 \
+  --destination-port-ranges 3000 \
   --source-address-prefixes "*" \
   --destination-address-prefixes "*" \
-  --description "Allow inbound HTTP traffic on port 8080 for web application"
+  --description "Allow inbound HTTP traffic on port 3000 for web application"
 ```
 
 **Explanation for `az network nsg rule create`:**
@@ -241,9 +241,9 @@ sudo docker compose up -d
 
 ### 6️⃣ Expose the Application on Public Port  
 By default, Azure virtual machines are protected by **Network Security Groups (NSGs)** that block all **incoming** traffic except for specific allowed ports.  
-To access your app (e.g., running on port `8000`) **from the internet**, you need to manually allow inbound traffic to that port.
+To access your app (e.g., running on port `3000`) **from the internet**, you need to manually allow inbound traffic to that port.
 
-### ✅ Steps to open port 8000:
+### ✅ Steps to open port 3000:
 
 ```yaml
 1. Go to Azure Portal → your VM → Networking tab.
@@ -255,7 +255,7 @@ To access your app (e.g., running on port `8000`) **from the internet**, you nee
      → Accepts traffic from any source port (standard).
    - Destination: Any  
      → Refers to any destination IP within the VM (standard).
-   - Destination port ranges: 8000  
+   - Destination port ranges: 3000  
      → The public port your container is exposed on (e.g., Nginx running on port 8080).
    - Protocol: TCP  
      → Most web traffic uses TCP; this is the common setting for web apps.
@@ -263,7 +263,7 @@ To access your app (e.g., running on port `8000`) **from the internet**, you nee
      → Approves traffic instead of denying it.
    - Priority: 1010  
      → Determines rule evaluation order; lower = higher priority. Must be unique.
-   - Name: Allow-Web-8080 (or any descriptive name)
+   - Name: Allow-Web-3000 (or any descriptive name)
 4. Click Add to apply the rule.
 ```
 
@@ -282,61 +282,302 @@ curl http://<public-ip>:3000
 ---
 
 <details>
-<summary><strong>Task 5 – Use Storage Account (Optional Challenge) </strong></summary>
+<summary><strong>Task 5 – Use Storage Account ✅</strong></summary>
 
 ✅ **Goal**: Upload a file to Azure Storage using the CLI.
 
 ---
 
+
+## 📁 1. Create Storage Account
+
 ```bash
 az storage account create \
-  --name mystorageacct \
-  --resource-group myResourceGroup \
-  --location eastus \
-  --sku Standard_LRS
+   --name mystorage \
+   --resource-group myResourceGroup \
+   --location eastus \
+   --sku Standard_LRS \
+   --kind StorageV2 \
+   --access-tier Hot \
+   --enable-hierarchical-namespace false \
+   --allow-blob-public-access true \
+   --min-tls-version TLS1_2
+```
 
+### Explanation for `az storage account create`:
+* `--name`: A unique name for your storage account (must be globally unique).
+* `--resource-group`: The resource group to which the storage account will belong.
+* `--location`: Azure region (e.g., `eastus`).
+* `--sku`: Pricing tier (`Standard_LRS` for standard locally redundant storage).
+* `--kind`: Type of storage account. `StorageV2` is the most common.
+* `--access-tier`: Either `Hot` (frequent access) or `Cool` (infrequent access).
+* `--enable-hierarchical-namespace`: Set to `true` to enable Data Lake features (not needed here).
+* `--allow-blob-public-access`: If `true`, allows anonymous public access to blobs.
+* `--min-tls-version`: Enforces minimum TLS version for connections.
+
+---
+
+## 🗂️ 2. Create Blob Container
+
+```bash
 az storage container create \
   --name mycontainer \
-  --account-name mystorageacct
+  --account-name mystorage \
+  --public-access blob
+```
 
+### Explanation for `az storage container create`:
+* `--name`: Name of your container within the storage account.
+* `--account-name`: The name of the storage account you just created.
+* `--public-access`: Sets level of access. `blob` allows public read access to blobs only.
+
+---
+
+## 📂 3. Upload a File to the Container
+
+```bash
 az storage blob upload \
-  --account-name mystorageacct \
+  --account-name mystorage \
   --container-name mycontainer \
   --name sample.txt \
-  --file ./sample.txt
+  --file ./sample.txt \
+  --overwrite
 ```
+
+### Explanation for `az storage blob upload`:
+* `--account-name`: Name of the storage account.
+* `--container-name`: Target container.
+* `--name`: The blob name inside Azure (what it will be called after upload).
+* `--file`: The local file path to upload.
+* `--overwrite`: Optional flag to overwrite if blob already exists.
+
+---
+
+## 🔍 4. Get Blob URL
+
+If public access is allowed, you can construct the blob's URL like so:
+
+```bash
+curl https://mystorage.blob.core.windows.net/mycontainer/sample.txt
+```
+
+---
 
 </details>
 
 ---
 
 <details>
-<summary><strong>Task 6 – Script the Entire Deployment </strong></summary>
+<summary><strong>Task 6 – Script the Entire Deployment ✅</strong></summary>
 
-✅ **Goal**: Write a bash script that automates all steps above.
+✅ **Goal**: Write a bash script that automates all steps required to deploy a simple web application to an Azure Virtual Machine.
 
 ---
 
-Include in your script:
-- Resource group + VM creation
-- NSG rule addition
-- App deployment
-- Bonus: cleanup logic
+## 📦 Features
 
-Example (partial):
+This script performs the following operations:
 
-[bash]
-#!/bin/bash
+- Logs in to Azure CLI (if not already logged in)
+- Prompts user for key inputs (resource group, VM name, NSG name, etc.)
+- Creates:
+  - Resource Group
+  - Virtual Machine (Ubuntu)
+  - Network Security Group with HTTP rule on port 3000
+  - NSG association to the VM's network interface
+- Transfers application files via SCP to `~/week8` on the VM
+- Installs Docker on the VM if missing
+- Runs the application using `docker compose`
+- Optional: Cleans up all created Azure resources
 
-az group create --name myResourceGroup --location eastus
+---
 
-az vm create \
-  --resource-group myResourceGroup \
-  --name myVM \
-  --image UbuntuLTS \
-  --admin-username azureuser \
-  --generate-ssh-keys
-[/bash]
+## 📋 Prerequisites
+
+- Azure CLI installed and configured
+- SSH key expected at `~/.ssh/mynewkey.pub` (auto-generated by the script if missing)
+- Your web application files (including `docker-compose.yml`) are in the current directory
+- The script copies files to `~/week8` directory on the VM
+
+---
+
+## 🧪 Script Usage
+
+1. Make the script executable:
+
+```bash
+chmod +x deploy.sh
+```
+
+2. Run the script:
+
+```bash
+./deploy.sh
+```
+
+You will be prompted to enter the following:
+
+- Resource group name
+- Virtual Machine name
+- Admin username for the VM
+- Network Security Group name
+
+---
+
+## 🧠 Script Structure
+
+The script is modular and organized into clearly defined functions:
+
+### 🔹 User Input
+
+```bash
+prompt_inputs()
+```
+
+Prompts for resource group, VM name, admin username, and NSG name.
+
+---
+
+### 🔹 Azure Login
+
+```bash
+login_azure()
+```
+
+Checks if user is logged into Azure. If not, runs `az login`.
+
+---
+
+### 🔹 Resource Group
+
+```bash
+create_resource_group()
+```
+
+Creates a new resource group in `westeurope`.
+
+---
+
+### 🔹 Generate SSH Key
+
+```bash
+generate_ssh_key_if_needed()
+```
+
+Generates an RSA 4096-bit SSH key at ~/.ssh/mynewkey if it doesn't exist.
+
+---
+
+### 🔹 VM Creation
+
+```bash
+create_vm()
+```
+
+Creates a new Ubuntu VM with SSH keys, basic public IP, and 30GB OS disk.
+
+---
+
+### 🔹 NSG Rule and Association
+
+```bash
+create_nsg_rule()
+associate_nsg()
+```
+
+Creates a rule to allow inbound TCP traffic on port 3000 and associates the NSG with the VM's NIC.
+
+---
+
+### 🔹 Public IP
+
+```bash
+get_public_ip()
+```
+
+Retrieves the VM's public IP address.
+
+---
+
+### 🔹 File Transfer and App Deployment
+
+```bash
+transfer_files()
+deploy_app()
+```
+
+Copies all files from the current directory into `~/week8` on the VM and runs the app using Docker Compose. Installs Docker if needed.
+
+---
+
+### 🔹 Resource Cleanup
+
+```bash
+cleanup_resources()
+```
+
+Asks the user if they want to delete all created resources. If confirmed, runs:
+
+```bash
+az group delete --name "$resource_group_name" --yes --no-wait
+```
+
+---
+
+## ✅ Example Output
+
+```yaml
+Logging into Azure CLI...
+Creating resource group...
+Generating SSH key at ~/.ssh/mynewkey...
+Creating VM...
+Creating NSG and rules...
+Associating NSG with VM's network interface...
+Transferring files...
+Running application...
+Application is running. You can access it at http://<public-ip>:3000
+
+Do you want to delete all created resources? (y/n):
+Deleting resource group '<resource_group_name>'...
+Cleanup initiated.
+```
+
+---
+
+## 🧼 Optional Cleanup
+
+At the end of the script, you will be prompted:
+
+```yaml
+Do you want to delete all created resources? (y/n):
+```
+
+If you confirm, all associated resources will be deleted in the background.
+
+---
+
+## 📁 File Structure Expectation
+
+Make sure your application directory contains at least:
+
+```yaml
+week8/
+├── docker-compose.yml
+├── /backend
+└── /frontend
+```
+
+---
+
+## 📌 Notes
+
+```yaml
+- Script is idempotent — safe to rerun with the same inputs.
+- VM is created in westeurope region.
+- NSG opens port 3000 only (you can adjust this in the function).
+```
+
+---
 
 </details>
 
