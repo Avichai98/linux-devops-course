@@ -57,7 +57,7 @@ create_vm() {
   az vm create \
     --resource-group "$resource_group_name" \
     --name "$vm_name" \
-    --image UbuntuLTS \
+    --image Ubuntu2204 \
     --admin-username "$vm_admin_username" \
     --ssh-key-values ~/.ssh/mynewkey.pub \
     --location westeurope \
