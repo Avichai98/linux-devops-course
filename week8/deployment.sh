@@ -1,6 +1,9 @@
 #!/bin/bash
 
 set -e
+log_file="deployment_log.md"
+exec > >(tee -a "$log_file") 2>&1
+
 
 # This script is used to deploy the application
 
@@ -136,6 +139,20 @@ create_nsg_rule() {
     --destination-address-prefixes "*" \
     --description "Allow inbound HTTP traffic on port 3000"
   echo "NSG rule created."
+
+  az network nsg rule create \
+    --resource-group "$resource_group_name" \
+    --nsg-name "$nsg_name" \
+    --name AllowHTTP \
+    --priority 1001 \
+    --direction Inbound \
+    --access Allow \
+    --protocol Tcp \
+    --destination-port-ranges 80 \
+    --source-address-prefixes "*" \
+    --destination-address-prefixes "*" \
+    --description "Allow inbound HTTP traffic on port 80"
+  echo "NSG rule created."
 }
 
 associate_nsg() {
@@ -148,9 +165,42 @@ associate_nsg() {
 
 # ======= DEPLOYMENT =======
 
+setup_file_share() {
+  echo "Creating Azure File Share..."
+
+  storage_account="${resource_group_name}stor$RANDOM"
+
+  az storage account create \
+   --name "$storage_account" \
+   --resource-group "$resource_group_name" \
+   --location westeurope \
+   --sku Standard_LRS \
+   --kind StorageV2 \
+   --access-tier Hot \
+   --enable-hierarchical-namespace false \
+   --allow-blob-public-access true \
+   --min-tls-version TLS1_2
+
+  az storage share create \
+    --name appshare \
+    --account-name "$storage_account"
+
+  storage_key=$(az storage account keys list \
+    --account-name "$storage_account" \
+    --query "[0].value" -o tsv)
+
+  echo "Mounting file share on VM..."
+  ssh -i ~/.ssh/mynewkey "$vm_admin_username@$public_ip" << EOF
+    sudo apt update && sudo apt install -y cifs-utils
+    sudo mkdir -p /mnt/appshare
+    sudo mount -t cifs //$storage_account.file.core.windows.net/appshare /mnt/appshare \
+      -o vers=3.0,username=$storage_account,password=$storage_key,dir_mode=0777,file_mode=0777,serverino
+EOF
+}
+
 transfer_files() {
   echo "Transferring application files to the VM..."
-  scp -i ~/.ssh/mynewkey -r ./ "$vm_admin_username@$public_ip":~/week8
+  scp -i ~/.ssh/mynewkey -r ./app "$vm_admin_username@$public_ip":~/week8
 }
 
 deploy_app() {
@@ -179,6 +229,37 @@ EOF
   echo "Application is running. You can access it at http://$public_ip:3000"
 }
 
+setup_reverse_proxy() {
+  echo "Installing and configuring NGINX as reverse proxy..."
+
+  ssh -i ~/.ssh/mynewkey "$vm_admin_username@$public_ip" << 'EOF'
+    set -e
+    sudo apt update
+    sudo apt install -y nginx
+
+    sudo tee /etc/nginx/sites-available/reverse-proxy > /dev/null << 'EOL'
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+    }
+}
+EOL
+
+    sudo ln -sf /etc/nginx/sites-available/reverse-proxy /etc/nginx/sites-enabled/default
+    sudo nginx -t && sudo systemctl restart nginx
+
+    echo "NGINX reverse proxy is now running at http://$public_ip"
+EOF
+}
+
 cleanup_resources() {
   read -p "Do you want to delete all created resources? (y/n): " cleanup
   if [[ "$cleanup" == "y" ]]; then
@@ -201,8 +282,10 @@ main() {
   create_nsg
   create_nsg_rule
   associate_nsg
+  setup_file_share
   transfer_files
   deploy_app
+  setup_reverse_proxy
   cleanup_resources
 }
 
