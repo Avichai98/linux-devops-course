@@ -129,7 +129,7 @@ create_nsg_rule() {
   az network nsg rule create \
     --resource-group "$resource_group_name" \
     --nsg-name "$nsg_name" \
-    --name AllowHTTP \
+    --name AllowHTTP3000 \
     --priority 1000 \
     --direction Inbound \
     --access Allow \
@@ -143,7 +143,7 @@ create_nsg_rule() {
   az network nsg rule create \
     --resource-group "$resource_group_name" \
     --nsg-name "$nsg_name" \
-    --name AllowHTTP \
+    --name AllowHTTP80 \
     --priority 1001 \
     --direction Inbound \
     --access Allow \
@@ -152,6 +152,20 @@ create_nsg_rule() {
     --source-address-prefixes "*" \
     --destination-address-prefixes "*" \
     --description "Allow inbound HTTP traffic on port 80"
+  echo "NSG rule created."
+
+  az network nsg rule create \
+    --resource-group "$resource_group_name" \
+    --nsg-name "$nsg_name" \
+    --name AllowHTTP8000 \
+    --priority 1002 \
+    --direction Inbound \
+    --access Allow \
+    --protocol Tcp \
+    --destination-port-ranges 8000 \
+    --source-address-prefixes "*" \
+    --destination-address-prefixes "*" \
+    --description "Allow inbound HTTP traffic on port 8000"
   echo "NSG rule created."
 }
 
