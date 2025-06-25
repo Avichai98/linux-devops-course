@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API_URL = "http://${window.location.hostname}:8000/names";
+const API_URL = `http://${window.location.hostname}:8000/names`;
 
 export default function App() {
   const [names, setNames] = useState([]);
