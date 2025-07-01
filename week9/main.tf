@@ -1,34 +1,35 @@
-
 terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.0"
+      version = "~> 4.34"
     }
   }
 }
 
 provider "azurerm" {
   features {}
+
+  subscription_id = var.subscription_id
+  tenant_id       = var.tenant_id
 }
 
-resource azurerm_resource_group "rg" {
-    name     = "rg-week9"
-    location = "westeurope"
+module "resource_group" {
+  source = "./modules/resource_group"
+  tags   = var.tags
 }
 
-resource azurerm_virtual_network "vnet" {
-    name                = "vnet-week9"
-    address_space       = ["10.0.0.0/24"]
-    location            = azurerm_resource_group.rg.location
-    resource_group_name = azurerm_resource_group.rg.name
+module "network" {
+  source              = "./modules/network"
+  resource_group_name = module.resource_group.resource_group_name
+  location            = module.resource_group.location
+  tags                = var.tags
 }
 
-resource "azurerm_subnet" "subnet" {
-    name                 = "subnet-week9"
-    resource_group_name  = azurerm_resource_group.rg.name
-    virtual_network_name = azurerm_virtual_network.vnet.name
-    address_prefixes     = [
-        cidrsubnet(azurerm_virtual_network.vnet.address_space[0], 2, 1)
-    ]
+module "virtual_machine" {
+  source              = "./modules/virtual_machine"
+  location            = module.resource_group.location
+  resource_group_name = module.resource_group.resource_group_name
+  nic_id              = module.network.nic_id
+  tags                = var.tags
 }

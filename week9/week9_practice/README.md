@@ -197,62 +197,373 @@ Confirm the creation of the resource group in the Azure Portal.
 <details>
 <summary><strong>Task 3 – Define and Deploy a Virtual Network ✅</strong></summary>
 
-✅ **Goal**: Extend Terraform configuration to deploy a virtual network.
+## Goal
+Extend the Terraform configuration to provision a complete Azure Virtual Machine (VM) infrastructure. This includes:
+- Virtual Network (VNet)
+- Subnet
+- Network Security Group (NSG) and Security Rules
+- Public IP
+- Network Interface (NIC)
+- Linux Virtual Machine (VM)
+- Use of `variables.tf` and `outputs.tf` for flexibility and visibility
 
 ---
 
-### ✏️ Example Virtual Network Configuration:
+## ✏️ Steps
+
+### 1. Define the Virtual Network
 
 ```hcl
 resource "azurerm_virtual_network" "vnet" {
   name                = "vnet-week9"
-  address_space       = ["10.0.0.0/24"]
+  address_space       = var.address_space
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
+  tags = {
+    environment = var.tags["environment"]
+  }
+}
+```
+#### 📌 Explanation:
+- Creates a virtual network (VNet) for the VM.
+- `address_space` defines the range of IP addresses for the network.
+- Tags are used for environment identification.
+
+---
+
+### 2. Define the Subnet
+
+```hcl
+resource "azurerm_subnet" "subnet" {
+  name                 = "subnet-week9"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = var.subnet_address_prefix
+}
+```
+#### 📌 Explanation:
+- Subnet splits the virtual network into smaller address spaces.
+- The subnet is linked to the virtual network.
+
+---
+
+### 3. Define the Network Security Group (NSG)
+
+```hcl
+resource "azurerm_network_security_group" "nsg" {
+  name                = "nsg-week9"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  tags = {
+    environment = var.tags["environment"]
+  }
+}
+```
+#### 📌 Explanation:
+- Creates a security layer that controls inbound and outbound traffic.
+
+---
+
+### 4. Define Security Rules
+
+#### Allow SSH:
+```hcl
+resource "azurerm_network_security_rule" "allow_ssh" {
+  name                        = "allow-ssh"
+  description                 = "Allow SSH traffic"
+  priority                    = 100
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "22"
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  network_security_group_name = azurerm_network_security_group.nsg.name
+  resource_group_name         = azurerm_resource_group.rg.name
 }
 ```
 
-1. Run:
+#### Allow Application Ports:
+```hcl
+resource "azurerm_network_security_rule" "allow_app_ports" {
+  name                        = "allow-app-ports"
+  description                 = "Allow application ports"
+  priority                    = 101
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_ranges     = var.app_ports
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  network_security_group_name = azurerm_network_security_group.nsg.name
+  resource_group_name         = azurerm_resource_group.rg.name
+}
+```
+#### 📌 Explanation:
+- Allows SSH access on port 22.
+- Opens additional application ports (3000, 8000) using a variable.
 
-```bash
-terraform plan
-terraform apply
+---
+
+### 5. Associate NSG with Subnet
+
+```hcl
+resource "azurerm_subnet_network_security_group_association" "subnet_nsg_association" {
+  subnet_id                 = azurerm_subnet.subnet.id
+  network_security_group_id = azurerm_network_security_group.nsg.id
+}
+```
+#### 📌 Explanation:
+- Links the security group to the subnet to enforce the rules.
+
+---
+
+### 6. Create a Public IP Address
+
+```hcl
+resource "azurerm_public_ip" "public_ip" {
+  name                = "public-ip-week9"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  tags = {
+    environment = var.tags["environment"]
+  }
+}
+```
+#### 📌 Explanation:
+- Allocates a static public IP for external VM access.
+
+---
+
+### 7. Create a Network Interface
+
+```hcl
+resource "azurerm_network_interface" "nic" {
+  name                = "nic-week9"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  ip_configuration {
+    name                          = "ipconfig-week9"
+    subnet_id                     = azurerm_subnet.subnet.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.public_ip.id
+  }
+}
+```
+#### 📌 Explanation:
+- Connects the VM to the network using the subnet and public IP.
+
+---
+
+### 8. Create a Linux Virtual Machine
+
+```hcl
+resource "azurerm_linux_virtual_machine" "vm" {
+  name                = "vm-week9"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  size                = var.vm_size
+  admin_username      = var.adminuser
+  network_interface_ids = [azurerm_network_interface.nic.id]
+
+  admin_ssh_key {
+    username   = var.adminuser
+    public_key = file(var.admin_ssh_public_key_path)
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "18.04-LTS"
+    version   = "latest"
+  }
+
+  tags = {
+    environment = var.tags["environment"]
+  }
+}
+```
+#### 📌 Explanation:
+- Creates the virtual machine using Ubuntu Server.
+- Configures SSH access via public key authentication.
+- Uses the **OS Disk** block to define:
+  - `caching = "ReadWrite"`: Improves performance by caching both read and write operations.
+  - `storage_account_type = "Standard_LRS"`: Uses a locally redundant standard storage account for the VM's OS disk.
+
+---
+
+## 📂 Additional Files
+
+### 1. `variables.tf`
+
+```hcl
+variable "subscription_id" { ... }
+variable "tenant_id" { ... }
+variable "resource_group_name" { ... }
+variable "adminuser" { ... }
+variable "admin_ssh_public_key_path" { ... }
+variable "admin_ssh_private_key_path" { ... }
+variable "location" { ... }
+variable "vm_size" { ... }
+variable "vm_name" { ... }
+variable "subnet_address_prefix" { ... }
+variable "address_space" { ... }
+variable "app_ports" { ... }
+variable "tags" { ... }
 ```
 
-✅ Verify that the virtual network is created successfully.
+#### 📌 Explanation:
+- Defines all the parameters that allow **dynamic configuration**.
+- Includes SSH key paths, resource names, and allowed ports.
+
+---
+
+### 2. `outputs.tf`
+
+```hcl
+output "public_ip_address" { ... }
+output "virtual_machine_id" { ... }
+output "admin_username" { ... }
+output "ssh_connection_string" { ... }
+output "resource_group_name" { ... }
+output "source_image_reference" { ... }
+output "address_space" { ... }
+output "subnet_address_prefix" { ... }
+output "app_ports" { ... }
+```
+
+#### 📌 Explanation:
+- Displays the outputs **after deployment**.
+- Provides easy access to the public IP, SSH connection string, VM ID, and other important info.
+
+---
+
+## 🚀 Terraform Commands
+
+```bash
+terraform init
+terraform plan
+terraform apply
+terraform output
+```
+
+---
+
+### Verify the Deployment and SSH Connection
+
+After successfully applying the configuration and seeing the outputs, especially the `ssh_connection_string`, verify that you can connect to the VM.
+
+Run the following command in your terminal:
+
+```bash
+ssh -i ~/.ssh/terraform adminuser@<Public-IP>
+```
+
+Or directly use the connection string provided in the output:
+
+```bash
+ssh -i ~/.ssh/terraform adminuser@<Public-IP>
+```
+
+> **Note:**  
+> Replace `~/.ssh/terraform` with the actual path to your **private SSH key** if you used a different one.
+
+This confirms that:
+- The VM was created successfully.
+- The network configuration is correct.
+- The SSH key was set correctly.
+- You have remote access to the VM.
+
+---
+
+## Summary
+You now have a full Azure VM infrastructure deployed via Terraform, using a well-structured and flexible setup with variables and outputs.
+
 
 </details>
 
 ---
 
 <details>
-<summary><strong>Task 4 – Organize Terraform Code with Modules</strong></summary>
+<summary><strong>Task 4 – Organize Terraform Code with Modules ✅</strong></summary>
 
-✅ **Goal**: Refactor the project using modules for better structure.
+## Goal
+Refactor the Terraform project to use **modular structure**: separate the **Resource Group**, **Networking**, and **Virtual Machine** into independent modules.
 
 ---
 
-### 📂 Suggested Folder Structure:
+## 📂 Folder Structure
 
-```text
-.
+```
+project-root/
 ├── main.tf
+├── variables.tf
+├── outputs.tf
+├── terraform.tfstate
 ├── modules/
 │   ├── resource_group/
-│   │   └── main.tf
-│   ├── virtual_network/
-│   │   └── main.tf
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   ├── network/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
 │   └── virtual_machine/
-│       └── main.tf
-├── variables.tf
-└── outputs.tf
+│       ├── main.tf
+│       ├── variables.tf
+│       └── outputs.tf
 ```
 
 ---
 
-✅ Use `terraform plan` and `terraform apply` to verify the modular deployment.
+## ✨ Explanation
 
-</details>
+### Root Files
+- **main.tf**: Calls each module and passes the required variables.
+- **variables.tf**: Defines global variables.
+- **outputs.tf**: Collects outputs from modules (such as public IP address, VM ID, etc.).
+
+### Modules
+Each module is an isolated component that can be reused.
+
+#### 📂 modules/resource_group/
+- Creates the Azure Resource Group.
+- Receives `resource_group_name`, `location`, and `tags` as input variables.
+- Outputs the resource group name and location for other modules to consume.
+
+#### 📂 modules/network/
+- Creates the Virtual Network, Subnet, NSG, Security Rules, Public IP, and Network Interface.
+- Depends on the Resource Group module.
+- Outputs the Public IP address and the NIC ID for the VM.
+
+#### 📂 modules/virtual_machine/
+- Creates the Virtual Machine using Ubuntu Server.
+- Configures SSH access via public key authentication.
+- Depends on the Network module to receive the NIC ID.
+- Outputs the VM ID and SSH connection string.
+
+---
+
+## Check the plan:
+```bash
+terraform plan
+```
+
+## Apply the configuration:
+```bash
+terraform apply
+```
 
 ---
 
