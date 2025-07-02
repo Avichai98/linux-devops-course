@@ -568,36 +568,132 @@ terraform apply
 ---
 
 <details>
-<summary><strong>Task 5 – Remote State with Azure Storage</strong></summary>
+<summary><strong>Task 5 – Remote State with Azure Storage ✅</strong></summary>
 
-✅ **Goal**: Configure remote state storage and enable logging.
+## Goal
+Set up remote state management using Azure Storage, migrate Terraform state to remote backend, and enable logging and debugging.
 
 ---
 
-### 📦 Backend Configuration Example:
+## 📂 Folder Structure
 
+```
+project-root/
+├── bootstrap/              # Folder for creating remote backend resources
+│   ├── main.tf             # Storage Account, Container, and Resource Group creation
+│   ├── variables.tf        # Variables specific to remote state resources
+│   ├── outputs.tf          # Outputs for storage account and container names
+│   └── terraform.tfstate   # Temporary local state before backend migration
+├── main.tf                 # Root configuration with backend and module calls
+├── variables.tf            # Project-level variables
+├── outputs.tf              # Project-level outputs
+├── terraform.tfstate       # Managed by Terraform, do not edit
+├── terraform.tfstate.backup
+├── .terraform.lock.hcl
+├── modules/
+│   ├── resource_group/
+│   ├── network/
+│   └── virtual_machine/
+
+```
+
+---
+
+## ✏️ Steps
+
+### Step 1: Create Remote State Infrastructure
+
+In `bootstrap/main.tf`:
+```hcl
+resource "azurerm_resource_group" "rg" {
+  name     = "rg-tfstate-week9"
+  location = var.location
+  tags     = var.tags
+}
+
+resource "azurerm_storage_account" "sa_week9" {
+  name                     = var.storage_account_name
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  tags                     = var.tags
+}
+
+resource "azurerm_storage_container" "terraform" {
+  name                  = var.container_name
+  storage_account_id    = azurerm_storage_account.sa_week9.id
+  container_access_type = "private"
+}
+```
+
+Deploy using:
+```bash
+terraform init
+terraform apply
+```
+
+---
+
+### Step 2: Configure Remote Backend
+
+In the **main project’s main.tf**:
 ```hcl
 terraform {
   backend "azurerm" {
-    resource_group_name  = "myResourceGroup"
-    storage_account_name = "mystorageaccount"
-    container_name       = "tfstate"
+    resource_group_name  = "rg-tfstate-week9"
+    storage_account_name = "your_storage_account_name"
+    container_name       = "your_container_name"
     key                  = "terraform.tfstate"
   }
 }
 ```
 
+Run:
+```bash
+terraform init
+```
+
+Confirm migration by typing:
+```bash
+yes
+```
+
 ---
 
-### 🔍 Logging and Debugging:
+### Step 3: Test Remote State
 
-Enable debug logs:
+Make a small change (like a tag) and run:
+```bash
+terraform plan
+terraform apply
+```
 
+Ensure the state is now saved remotely.
+
+---
+
+### Step 4: Enable Debug Logging
+
+Run with debugging:
+```bash
+TF_LOG=DEBUG terraform apply
+```
+
+Save the logs to a file:
 ```bash
 TF_LOG=DEBUG terraform apply 2>&1 | tee tf_debug.log
 ```
 
-✅ Verify that the remote state is correctly stored in the Azure Storage Account.
+Review the log file for backend interactions.
+
+---
+
+## Summary
+- Created Azure Storage for remote backend.
+- Migrated Terraform state to remote backend.
+- Verified functionality.
+- Enabled and saved debug logs.
 
 </details>
 

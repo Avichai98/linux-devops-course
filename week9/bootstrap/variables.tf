@@ -13,7 +13,25 @@ variable "tenant_id" {
 variable "resource_group_name" {
   description = "The name of the resource group to create."
   type        = string
-  default     = "rg-week9"
+  default     = "rg-tfstate-week9"
+}
+
+variable "location" {
+  description = "The Azure region where resources will be created."
+  type        = string
+  default     = "westeurope"
+}
+
+variable "storage_account_name" {
+  description = "The name of the storage account for the Terraform backend."
+  type        = string
+  default     = "storageaccountweek9"
+}
+
+variable "container_name" {
+  description = "The name of the container for the Terraform backend."
+  type        = string
+  default     = "terraform"
 }
 
 variable "tags" {
