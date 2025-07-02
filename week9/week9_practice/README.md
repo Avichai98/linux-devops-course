@@ -565,6 +565,8 @@ terraform plan
 terraform apply
 ```
 
+</details>
+
 ---
 
 <details>
