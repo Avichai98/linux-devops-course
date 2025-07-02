@@ -8,7 +8,7 @@
 
 ---
 
-### 🧰 Installation Instructions:
+### Installation Instructions:
 
 ```bash
 
@@ -22,7 +22,7 @@ terraform -version
 
 ---
 
-### 🌐 Configure Azure CLI:
+### Configure Azure CLI:
 
 ```bash
 # Install Azure CLI
@@ -35,7 +35,7 @@ az version
 az login
 ```
 
-### ✅ Verify Subscription
+### Verify Subscription
 
 After login, verify that you are connected to the correct Azure subscription:
 
@@ -68,7 +68,7 @@ Make sure the active subscription is the one you intend to work with for this pr
 
 ---
 
-### ✏️ Steps:
+### Steps:
 
 1. Create a `main.tf` file:
 
@@ -82,7 +82,7 @@ terraform {
   }
 }
 ```
-#### 📌 Explanation:
+#### Explanation:
 This block defines the required Terraform provider.  
 - `required_providers`: Specifies the provider needed to interact with Azure.
 - `source = "hashicorp/azurerm"`: Uses the official Azure provider from HashiCorp.
@@ -95,7 +95,7 @@ provider "azurerm" {
   features {}
 }
 ```
-#### 📌 Explanation:
+#### Explanation:
 This block configures the Azure provider.
 - `features {}`: Required syntax, can remain empty unless specific features are used.
 - This configuration uses **dynamic subscription selection**, meaning Terraform will automatically use the subscription from your Azure CLI login.
@@ -128,7 +128,7 @@ resource azurerm_resource_group "rg" {
     location = "westeurope"
 }
 ```
-#### 📌 Explanation:
+#### Explanation:
 This block creates a Resource Group in Azure.
 - `azurerm_resource_group`: Specifies the type of resource to create.
 - `"rg"`: Logical Terraform name (used for referencing the resource later).
@@ -144,14 +144,14 @@ Example of valid region: `westeurope`
 
 ---
 
-### 🚀 Terraform Commands:
+### Terraform Commands:
 
 2. Initialize Terraform:
 
 ```bash
 terraform init
 ```
-#### 📌 Explanation:
+#### Explanation:
 - Initializes the current working directory as a Terraform project.
 - Downloads the required provider plugins (in this case, AzureRM).
 - Creates the `.terraform` directory which stores configuration files for the project.
@@ -165,7 +165,7 @@ You must run this command **before** using `plan` or `apply`.
 ```bash
 terraform plan
 ```
-#### 📌 Explanation:
+#### Explanation:
 - Displays the execution plan: what Terraform will create, update, or destroy.
 - It’s a **safe preview** that shows changes without applying them.
 - Recommended to run before every `apply` to verify the desired outcome.
@@ -179,7 +179,7 @@ The plan shows the current status vs. the desired configuration.
 ```bash
 terraform apply
 ```
-#### 📌 Explanation:
+#### Explanation:
 - Applies the changes required to reach the desired state of the configuration.
 - Executes the creation, modification, or deletion of resources.
 - Requires manual confirmation by typing `yes`.
@@ -209,7 +209,7 @@ Extend the Terraform configuration to provision a complete Azure Virtual Machine
 
 ---
 
-## ✏️ Steps
+## Steps
 
 ### 1. Define the Virtual Network
 
@@ -224,7 +224,7 @@ resource "azurerm_virtual_network" "vnet" {
   }
 }
 ```
-#### 📌 Explanation:
+#### Explanation:
 - Creates a virtual network (VNet) for the VM.
 - `address_space` defines the range of IP addresses for the network.
 - Tags are used for environment identification.
@@ -241,7 +241,7 @@ resource "azurerm_subnet" "subnet" {
   address_prefixes     = var.subnet_address_prefix
 }
 ```
-#### 📌 Explanation:
+#### Explanation:
 - Subnet splits the virtual network into smaller address spaces.
 - The subnet is linked to the virtual network.
 
@@ -259,7 +259,7 @@ resource "azurerm_network_security_group" "nsg" {
   }
 }
 ```
-#### 📌 Explanation:
+#### Explanation:
 - Creates a security layer that controls inbound and outbound traffic.
 
 ---
@@ -301,7 +301,7 @@ resource "azurerm_network_security_rule" "allow_app_ports" {
   resource_group_name         = azurerm_resource_group.rg.name
 }
 ```
-#### 📌 Explanation:
+#### Explanation:
 - Allows SSH access on port 22.
 - Opens additional application ports (3000, 8000) using a variable.
 
@@ -315,7 +315,7 @@ resource "azurerm_subnet_network_security_group_association" "subnet_nsg_associa
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
 ```
-#### 📌 Explanation:
+#### Explanation:
 - Links the security group to the subnet to enforce the rules.
 
 ---
@@ -334,7 +334,7 @@ resource "azurerm_public_ip" "public_ip" {
   }
 }
 ```
-#### 📌 Explanation:
+#### Explanation:
 - Allocates a static public IP for external VM access.
 
 ---
@@ -355,7 +355,7 @@ resource "azurerm_network_interface" "nic" {
   }
 }
 ```
-#### 📌 Explanation:
+#### Explanation:
 - Connects the VM to the network using the subnet and public IP.
 
 ---
@@ -393,7 +393,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
   }
 }
 ```
-#### 📌 Explanation:
+#### Explanation:
 - Creates the virtual machine using Ubuntu Server.
 - Configures SSH access via public key authentication.
 - Uses the **OS Disk** block to define:
@@ -422,7 +422,7 @@ variable "app_ports" { ... }
 variable "tags" { ... }
 ```
 
-#### 📌 Explanation:
+#### Explanation:
 - Defines all the parameters that allow **dynamic configuration**.
 - Includes SSH key paths, resource names, and allowed ports.
 
@@ -442,13 +442,13 @@ output "subnet_address_prefix" { ... }
 output "app_ports" { ... }
 ```
 
-#### 📌 Explanation:
+#### Explanation:
 - Displays the outputs **after deployment**.
 - Provides easy access to the public IP, SSH connection string, VM ID, and other important info.
 
 ---
 
-## 🚀 Terraform Commands
+## Terraform Commands
 
 ```bash
 terraform init
@@ -527,7 +527,7 @@ project-root/
 
 ---
 
-## ✨ Explanation
+## Explanation
 
 ### Root Files
 - **main.tf**: Calls each module and passes the required variables.
@@ -599,7 +599,7 @@ project-root/
 
 ---
 
-## ✏️ Steps
+## Steps
 
 ### Step 1: Create Remote State Infrastructure
 
@@ -700,28 +700,129 @@ Review the log file for backend interactions.
 ---
 
 <details>
-<summary><strong>Task 6 – Advanced Practice: Import and Cleanup</strong></summary>
+<summary><strong>Task 6 – Advanced Practice: Import and Cleanup ✅</strong></summary>
 
-✅ **Goal**: Practice resource import and cleanup.
+## Goal:
+Import an existing Azure VM into Terraform state and manage it with Terraform.
 
 ---
 
-### ✏️ Import Resource Example:
-
-```bash
-terraform import azurerm_virtual_machine.example /subscriptions/xxx/resourceGroups/xxx/providers/Microsoft.Compute/virtualMachines/xxx
+## 📁 Folder Structure:
+```text
+project-root/
+└── import_vm/
+    ├── main.tf         # Terraform configuration file for imported VM
+    └── terraform.tfstate # Terraform state file after import
 ```
 
-✅ Confirm that the resource is now managed by Terraform.
+---
+
+## Steps:
+
+### 1. Create a Virtual Machine using Azure CLI
+Run the following command to create a VM manually in Azure:
+
+```bash
+az vm create \
+  --resource-group rg-import-week9 \
+  --name vm-import-week9 \
+  --image Ubuntu2404 \
+  --admin-username avichai \
+  --ssh-key-values ~/.ssh/terraform.pub \
+  --size Standard_B1s
+```
+
+### 2. Prepare Terraform Configuration
+Write the following in `import_vm/main.tf`:
+
+```hcl
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 4.34"
+    }
+  }
+}
+
+provider "azurerm" {
+  features {}
+
+  subscription_id = {subscription_id}
+  tenant_id       = {tenant_id}
+}
+
+resource "azurerm_linux_virtual_machine" "vm" {
+  name                  = "vm-import-week9"
+  resource_group_name   = azurerm_resource_group.rg.name
+  location              = azurerm_resource_group.rg.location
+  size                  = "Standard_B1s"
+  admin_username        = "avichai"
+  network_interface_ids = [{nic_id}]
+
+  admin_ssh_key {
+    username   = "avichai"
+    public_key = file("~/.ssh/terraform.pub")
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Premium_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "ubuntu-24_04-lts"
+    sku       = "server"
+    version   = "latest"
+  }
+
+  secure_boot_enabled = true
+  vtpm_enabled        = true
+}
+```
+
+*(Ensure the VM configuration matches the existing VM or update it after import.)*
 
 ---
 
-### 🧹 Destroy All Resources:
+### 3. Initialize Terraform
+Run:
+```bash
+terraform init
+```
 
+---
+
+### 4. Import the VM
+Run:
+```bash
+terraform import azurerm_linux_virtual_machine.vm /subscriptions/{subscription_id}/resourceGroups/rg-import-week9/providers/Microsoft.Compute/virtualMachines/vm-import-week9
+```
+
+You should see `Import successful!`
+
+---
+
+### 5. Validate with `terraform plan`
+Run:
+```bash
+terraform plan
+```
+
+If there are no changes – the import was correct.  
+If there are differences – update `main.tf` to match the current VM.
+
+---
+
+### 6. Destroy the VM
+Run:
 ```bash
 terraform destroy
 ```
 
-✅ Verify resource deletion in Azure Portal.
+Make sure the VM and resource group are deleted from the Azure Portal.
+
+---
 
 </details>
